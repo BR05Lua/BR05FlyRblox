@@ -1,29 +1,21 @@
 --[[
-    BR05 Smooth Superman Flight Menu (draggable, 90-degree tilt, horror-style UI)
+    BR05 Smooth Superman Flight Menu (90-degree tilt, BR05-style UI)
 
     - Default:
         * Menu toggle: H
         * Flight toggle: F
     - UI:
-        * Horror theme: dark grey / black panel, red accents, rounded corners
-        * Styled closer to BR05 Graphics menu (but still draggable)
+        * BR05 theme: dark grey / black panel, red accents, rounded corners
         * Big red hint above menu that fades out smoothly
-        * Smooth show/hide tween, not locked in place
+        * Smooth show/hide tween
 
     - Flight:
         * Only for whitelisted users
         * WASD = move relative to camera
-        * Q/E = up/down
         * Full 3D flying (not stuck to ground)
         * Character tilts 90° (opposite direction from before) when flying forward
         * Smooth, gradual movement + rotation
-        * Right arm roughly points in movement direction
         * Walk/run sounds muted while flying, restored after
-
-    Whitelist:
-        Owner: 433636433
-        Extra users: 196988708, 375779444, 1575141882
-
     If this script explodes, it's probably you. - me
 ]]
 
@@ -36,20 +28,6 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-
---------------------------------------------------------------------
--- WHITELIST
---------------------------------------------------------------------
-local allowedUserIds = {
-	[433636433] = true,   -- owner
-	[196988708] = true,
-	[375779444] = true,
-	[1575141882] = true,
-}
-
-if not allowedUserIds[LocalPlayer.UserId] then
-	return -- not allowed, silently vanish like a horror jumpscare you missed
-end
 
 --------------------------------------------------------------------
 -- STATE
