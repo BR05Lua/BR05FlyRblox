@@ -34,7 +34,7 @@ local character, humanoid, rootPart
 local camera = workspace.CurrentCamera
 
 local flying = false
-local flySpeed = 80
+local flySpeed = 200
 local maxFlySpeed = 1000
 local minFlySpeed = 1
 
@@ -340,13 +340,13 @@ local function ui()
 	gui.Parent=pg
 
 	controlLabel=Instance.new("TextLabel")
-	controlLabel.AnchorPoint=Vector2.new(0.5,0)
+	controlLabel.AnchorPoint=Vector2.new(0.3,0)
 	controlLabel.Position=UDim2.new(0.5,0,0,6)
 	controlLabel.Size=UDim2.new(0,500,0,20)
-	controlLabel.Text=flightToggleKey.Name.." or Mobile Button = Fly   •   "..menuToggleKey.Name.." or X = Menu"
+	controlLabel.Text=flightToggleKey.Name.." or Button = Fly
 	controlLabel.Font=Enum.Font.Gotham
 	controlLabel.TextColor3=Color3.new(0,0,0)
-	controlLabel.TextSize=16
+	controlLabel.TextSize=14
 	controlLabel.BackgroundTransparency=1
 	controlLabel.Parent=gui
 
