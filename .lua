@@ -22,7 +22,7 @@ local DEBUG = false
 
 -- Animation IDs (R15 only) - MUST be EMOTE animations from the Marketplace
 local FLOAT_ID = "rbxassetid://88138077358201"
-local FLY_ID   = "rbxassetid://131217573719045"
+local FLY_ID   = "rbxassetid://111622525293727"
 
 --------------------------------------------------------------------
 -- SERVICES
