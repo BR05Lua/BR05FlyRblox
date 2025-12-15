@@ -19,22 +19,14 @@
 
     Saving:
       This script saves your IDs and keybinds locally using Player Attributes (survives respawn).
-      True cross-session saving (leaving + rejoining) cannot be done safely from a client-only script.
-      That requires a server DataStore (which needs a separate server script).
+      True cross-session saving (leaving + rejoining) requires a server DataStore.
 
     R15: Uses Float/Fly animations with smooth switching.
     R6: Smooth flight only (no anims).
 
     Added:
-      - Anim Packs tab (with pop-down categories: Roblox Anims, Unreleased Anims, Custom)
-
-    Changes (per request):
-      - Added FLOAT_ID reset button too
-      - Packs tab renamed to "Anim Packs"
-      - Inside Anim Packs: dropdown sections
-        * Unreleased: Cowboy, Princess, ZombieFE, Confident, Ghost, Patrol, Popstar, Sneaky
-        * Roblox Anims: everything else
-        * Custom: blank for future
+      - Server Stuff tab: Rejoin (same server) + Server Hop (highest players)
+      - FPS counter bottom-right (independent, resolution safe)
 ]]
 
 --------------------------------------------------------------------
@@ -45,6 +37,8 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -134,6 +128,10 @@ local MENU_EXPANDED_H = 300
 local MENU_COLLAPSED_H = 32
 local menuCollapsed = false
 local arrowBtn
+
+local fpsGui
+local fpsLabel
+local fpsConn
 
 --------------------------------------------------------------------
 -- UTIL
@@ -455,6 +453,159 @@ RunService.RenderStepped:Connect(function(dt)
 		rightShoulder.C0 = rightShoulder.C0:Lerp(defaultShoulderC0, aRot)
 	end
 end)
+
+--------------------------------------------------------------------
+-- FPS HUD (independent)
+--------------------------------------------------------------------
+local function getFpsColor(fps, t)
+	if fps < 40 then
+		return Color3.fromRGB(255, 0, 0)
+	elseif fps < 60 then
+		return Color3.fromRGB(255, 255, 0)
+	elseif fps <= 75 then
+		return Color3.fromRGB(0, 255, 0)
+	elseif fps <= 120 then
+		return Color3.fromRGB(0, 255, 200)
+	elseif fps <= 240 then
+		return Color3.fromRGB(0, 140, 255)
+	else
+		local h = (t * 0.35) % 1
+		return Color3.fromHSV(h, 1, 1)
+	end
+end
+
+local function ensureFpsHud()
+	local pg = LocalPlayer:WaitForChild("PlayerGui")
+
+	if fpsGui and fpsGui.Parent then
+		return
+	end
+
+	fpsGui = Instance.new("ScreenGui")
+	fpsGui.Name = "SOS_FPS"
+	fpsGui.ResetOnSpawn = false
+	fpsGui.IgnoreGuiInset = true
+	fpsGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	fpsGui.Parent = pg
+
+	fpsLabel = Instance.new("TextLabel")
+	fpsLabel.BackgroundTransparency = 1
+	fpsLabel.AnchorPoint = Vector2.new(1, 1)
+	fpsLabel.Position = UDim2.new(1, -6, 1, -6)
+	fpsLabel.Size = UDim2.new(0, 130, 0, 18)
+	fpsLabel.Font = Enum.Font.GothamBold
+	fpsLabel.TextSize = 12
+	fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
+	fpsLabel.TextYAlignment = Enum.TextYAlignment.Center
+	fpsLabel.Text = "FPS: ..."
+	fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fpsLabel.Parent = fpsGui
+
+	local frames = 0
+	local acc = 0
+	local displayFps = 0
+
+	if fpsConn then fpsConn:Disconnect() fpsConn = nil end
+	fpsConn = RunService.RenderStepped:Connect(function(dt)
+		frames += 1
+		acc += dt
+		if acc >= 0.25 then
+			displayFps = math.floor(frames / acc + 0.5)
+			frames = 0
+			acc = 0
+			if fpsLabel and fpsLabel.Parent then
+				fpsLabel.Text = "FPS: " .. tostring(displayFps)
+			end
+		end
+		if fpsLabel and fpsLabel.Parent then
+			fpsLabel.TextColor3 = getFpsColor(displayFps, os.clock())
+		end
+	end)
+end
+
+--------------------------------------------------------------------
+-- SERVER ACTIONS
+--------------------------------------------------------------------
+local function rejoinSameServer()
+	local ok, err = pcall(function()
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+	end)
+	if not ok then
+		tryNotify("Rejoin failed.")
+		dprint("Rejoin error:", err)
+	end
+end
+
+local function getBestServerId()
+	local cursor = ""
+	local tries = 0
+	local currentJob = game.JobId
+
+	while tries < 5 do
+		tries += 1
+
+		local url = "https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Desc&limit=100"
+		if cursor ~= "" then
+			url = url .. "&cursor=" .. HttpService:UrlEncode(cursor)
+		end
+
+		local ok, body = pcall(function()
+			return HttpService:GetAsync(url)
+		end)
+		if not ok or type(body) ~= "string" then
+			return nil
+		end
+
+		local decoded
+		local ok2 = pcall(function()
+			decoded = HttpService:JSONDecode(body)
+		end)
+		if not ok2 or type(decoded) ~= "table" then
+			return nil
+		end
+
+		local data = decoded.data
+		if type(data) == "table" then
+			for _, server in ipairs(data) do
+				if type(server) == "table" then
+					local id = server.id
+					local playing = server.playing
+					local maxPlayers = server.maxPlayers
+					if type(id) == "string" and id ~= currentJob then
+						if type(playing) == "number" and type(maxPlayers) == "number" then
+							if playing < maxPlayers then
+								return id
+							end
+						end
+					end
+				end
+			end
+		end
+
+		cursor = decoded.nextPageCursor or ""
+		if cursor == "" then
+			break
+		end
+	end
+
+	return nil
+end
+
+local function serverHop()
+	local serverId = getBestServerId()
+	if not serverId then
+		tryNotify("Server hop failed.")
+		return
+	end
+
+	local ok, err = pcall(function()
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, LocalPlayer)
+	end)
+	if not ok then
+		tryNotify("Server hop failed.")
+		dprint("Server hop error:", err)
+	end
+end
 
 --------------------------------------------------------------------
 -- ANIMATION PACK CHANGER (Anim Packs tab uses this)
@@ -1176,7 +1327,6 @@ local function createUI()
 	local unreleasedContainer = makeDropdownSection(packsFrame, "Unreleased Anims")
 	local customContainer = makeDropdownSection(packsFrame, "Custom (Soon)")
 
-	-- Custom placeholder (blank)
 	do
 		local note = Instance.new("TextLabel")
 		note.BackgroundTransparency = 1
@@ -1237,8 +1387,30 @@ local function createUI()
 
 	addEmptyTab("Camera")
 	addEmptyTab("Lighting")
-	addEmptyTab("Server Stuff")
 	addEmptyTab("Client")
+
+	-- SERVER STUFF TAB (buttons)
+	local serverFrame = (select(1, makeScrollingTab(contentHolder)))
+	serverFrame.Visible = false
+	tabFrames["Server Stuff"] = serverFrame
+
+	local serverHeader = makeTextLabel(serverFrame, "Server Stuff", 16, true)
+	serverHeader.Size = UDim2.new(1, -6, 0, 20)
+	serverHeader.TextXAlignment = Enum.TextXAlignment.Center
+
+	local rejoinBtn = makeTextButton(serverFrame, "Rejoin Game (Same Server)")
+	rejoinBtn.Size = UDim2.new(1, -6, 0, 30)
+
+	local hopBtn = makeTextButton(serverFrame, "Server Hop (Highest Players)")
+	hopBtn.Size = UDim2.new(1, -6, 0, 30)
+
+	rejoinBtn.MouseButton1Click:Connect(function()
+		rejoinSameServer()
+	end)
+
+	hopBtn.MouseButton1Click:Connect(function()
+		serverHop()
+	end)
 
 	-- MIC UP TAB (conditional)
 	if showMicUp then
@@ -1360,6 +1532,7 @@ saveSettingsToAttributes()
 getCharacter()
 loadTracks()
 createUI()
+ensureFpsHud()
 
 LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(0.25)
@@ -1368,6 +1541,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if flying then
 		stopFlying()
 	end
+	ensureFpsHud()
 end)
 
 dprint("SOS HUD loaded for:", LocalPlayer.Name)
