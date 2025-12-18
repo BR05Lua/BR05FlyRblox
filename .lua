@@ -113,6 +113,42 @@ local CONFIG = {
 local CustomAnims = {
 	Idle = {
 		{ Name = "Tall", Id = 91348372558295 },
+
+		{ Name = "Jonathan", Id = 120629563851640 },
+		{ Name = "Killer Queen", Id = 104714163485875 },
+		{ Name = "Dio", Id = 138467089338692 },
+		{ Name = "Dio OH", Id = 96658788627102 },
+		{ Name = "Joseph", Id = 87470625500564 },
+		{ Name = "Jolyne", Id = 97892708412696 },
+		{ Name = "Diego", Id = 127117233320016 },
+		{ Name = "Polnareff", Id = 104647713661701 },
+		{ Name = "Jotaro", Id = 134878791451155 },
+		{ Name = "Funny V", Id = 88859285630202 },
+		{ Name = "Johnny", Id = 77834689346843 },
+		{ Name = "Made in Heaven", Id = 79234770032233 },
+		{ Name = "Mahito", Id = 92585001378279 },
+		{ Name = "Honored One", Id = 139000839803032 },
+		{ Name = "Gon Rage", Id = 136678571910037 },
+		{ Name = "Sol's RNG 1", Id = 125722696765151 },
+		{ Name = "Luffy", Id = 107520488394848 },
+		{ Name = "Sans", Id = 123627677663418 },
+		{ Name = "Fake R6", Id = 96518514398708 },
+		{ Name = "Goku Warm Up", Id = 84773442399798 },
+		{ Name = "Goku UI/Mui", Id = 130104867308995 },
+		{ Name = "Goku Black", Id = 110240143520283 },
+		{ Name = "Sukuna", Id = 82974857632552 },
+		{ Name = "Toji", Id = 113657065279101 },
+		{ Name = "Isagi", Id = 135818607077529 },
+		{ Name = "Yuji", Id = 103088653217891 },
+		{ Name = "Lavinho", Id = 92045987196732 },
+		{ Name = "Ippo", Id = 76110924880592 },
+		{ Name = "Aizen", Id = 83896268225208 },
+		{ Name = "Kaneki", Id = 116671111363578 },
+		{ Name = "Tanjiro", Id = 118533315464114 },
+		{ Name = "Head Hold", Id = 129453036635884 },
+		{ Name = "Samurai", Id = 114305981386041 },
+		{ Name = "Robot Perform", Id = 105174189783870 },
+		{ Name = "Robot Speed 3", Id = 128047975332475 },
 	},
 
 	Walk = {
@@ -129,6 +165,16 @@ local CustomAnims = {
 		{ Name = "Animal", Id = 87721497492370 },
 		{ Name = "Fredbear", Id = 133284420439423 },
 		{ Name = "Cute Anime", Id = 106767496454996 },
+
+		{ Name = "Tall", Id = 134010853417610 },
+		{ Name = "Officer Earl", Id = 104646820775114 },
+		{ Name = "AOT Titan", Id = 95363958550738 },
+		{ Name = "TF2", Id = 122588181027551 },
+		{ Name = "Captain JS", Id = 87806542116815 },
+		{ Name = "Ninja Sprint", Id = 123763532572423 },
+		{ Name = "IDEK", Id = 101293881003047 },
+		{ Name = "Honored One", Id = 82260970223217 },
+		{ Name = "Head Hold", Id = 92715775326925 },
 	},
 }
 
@@ -1567,11 +1613,6 @@ function App:_addTab(name, order)
 	end))
 end
 
--- IMPORTANT CHANGE ONLY:
--- Menu open/close is now fully deterministic:
--- - Uses fixed open/closed positions (no drift)
--- - Cancels previous tweens
--- - Ignores stale tween completion callbacks (token)
 function App:_setMenu(open, instant)
 	self.MenuOpen = open
 
@@ -1609,7 +1650,6 @@ function App:_setMenu(open, instant)
 
 	if open then
 		self.MenuFrame.Visible = true
-		-- Force a known good starting point so it always comes down properly
 		self.MenuFrame.Position = closedPos
 		self.MenuFrame.BackgroundTransparency = 1
 
@@ -1628,7 +1668,6 @@ function App:_setMenu(open, instant)
 		self._MenuTween = tw
 		tw:Play()
 		tw.Completed:Connect(function()
-			-- Ignore any old completion firing after a new toggle
 			if self._MenuAnimToken ~= token then return end
 			if not self.MenuOpen then
 				self.MenuFrame.Visible = false
@@ -1734,7 +1773,6 @@ function App:BuildUI()
 	UI.Stroke(menu, 2)
 	self.MenuFrame = menu
 
-	-- Fixed positions captured once (prevents drift and "stuck" bugs)
 	self.MenuOpenPos = menu.Position
 	self.MenuClosedPos = UDim2.new(
 		self.MenuOpenPos.X.Scale, self.MenuOpenPos.X.Offset,
