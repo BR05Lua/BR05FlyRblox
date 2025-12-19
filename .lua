@@ -79,6 +79,11 @@ local CONFIG = {
 		},
 	},
 
+	Player = {
+		SpeedMin = 2,
+		SpeedMax = 500,
+	},
+
 	UI = {
 		MenuSize = UDim2.new(0, 520, 0, 360),
 		HandleSize = UDim2.new(0, 520, 0, 42),
@@ -106,80 +111,6 @@ local CONFIG = {
 		},
 	},
 }
-
---====================================================
--- Custom animations
---====================================================
-local CustomAnims = {
-	Idle = {
-		{ Name = "Tall", Id = 91348372558295 },
-
-		{ Name = "Jonathan", Id = 120629563851640 },
-		{ Name = "Killer Queen", Id = 104714163485875 },
-		{ Name = "Dio", Id = 138467089338692 },
-		{ Name = "Dio OH", Id = 96658788627102 },
-		{ Name = "Joseph", Id = 87470625500564 },
-		{ Name = "Jolyne", Id = 97892708412696 },
-		{ Name = "Diego", Id = 127117233320016 },
-		{ Name = "Polnareff", Id = 104647713661701 },
-		{ Name = "Jotaro", Id = 134878791451155 },
-		{ Name = "Funny V", Id = 88859285630202 },
-		{ Name = "Johnny", Id = 77834689346843 },
-		{ Name = "Made in Heaven", Id = 79234770032233 },
-		{ Name = "Mahito", Id = 92585001378279 },
-		{ Name = "Honored One", Id = 139000839803032 },
-		{ Name = "Gon Rage", Id = 136678571910037 },
-		{ Name = "Sol's RNG 1", Id = 125722696765151 },
-		{ Name = "Luffy", Id = 107520488394848 },
-		{ Name = "Sans", Id = 123627677663418 },
-		{ Name = "Fake R6", Id = 96518514398708 },
-		{ Name = "Goku Warm Up", Id = 84773442399798 },
-		{ Name = "Goku UI/Mui", Id = 130104867308995 },
-		{ Name = "Goku Black", Id = 110240143520283 },
-		{ Name = "Sukuna", Id = 82974857632552 },
-		{ Name = "Toji", Id = 113657065279101 },
-		{ Name = "Isagi", Id = 135818607077529 },
-		{ Name = "Yuji", Id = 103088653217891 },
-		{ Name = "Lavinho", Id = 92045987196732 },
-		{ Name = "Ippo", Id = 76110924880592 },
-		{ Name = "Aizen", Id = 83896268225208 },
-		{ Name = "Kaneki", Id = 116671111363578 },
-		{ Name = "Tanjiro", Id = 118533315464114 },
-		{ Name = "Head Hold", Id = 129453036635884 },
-		{ Name = "Samurai", Id = 114305981386041 },
-		{ Name = "Robot Perform", Id = 105174189783870 },
-		{ Name = "Robot Speed 3", Id = 128047975332475 },
-	},
-
-	Walk = {
-		{ Name = "Football/Soccer", Id = 116881956670910 },
-		{ Name = "Naruto", Id = 81851725854678 },
-		{ Name = "Animal", Id = 87721497492370 },
-		{ Name = "Fredbear", Id = 133284420439423 },
-		{ Name = "Cute Anime", Id = 106767496454996 },
-	},
-
-	Run = {
-		{ Name = "Football/Soccer", Id = 116881956670910 },
-		{ Name = "Naruto", Id = 81851725854678 },
-		{ Name = "Animal", Id = 87721497492370 },
-		{ Name = "Fredbear", Id = 133284420439423 },
-		{ Name = "Cute Anime", Id = 106767496454996 },
-
-		{ Name = "Tall", Id = 134010853417610 },
-		{ Name = "Officer Earl", Id = 104646820775114 },
-		{ Name = "AOT Titan", Id = 95363958550738 },
-		{ Name = "TF2", Id = 122588181027551 },
-		{ Name = "Captain JS", Id = 87806542116815 },
-		{ Name = "Ninja Sprint", Id = 123763532572423 },
-		{ Name = "IDEK", Id = 101293881003047 },
-		{ Name = "Honored One", Id = 82260970223217 },
-		{ Name = "Head Hold", Id = 92715775326925 },
-	},
-}
-
-local CUSTOM_WALK_SLOW_MULT = 0.65
-local CUSTOM_WALK_MIN = 8
 
 local function dprint(...)
 	if CONFIG.Debug then
@@ -391,6 +322,99 @@ local function setTabActive(btn, active)
 	end
 	btn.BackgroundTransparency = active and 0.08 or 0.22
 end
+
+--====================================================
+-- Custom animations
+--====================================================
+local CustomAnims = {
+	Idle = {
+		{ Name = "Tall", Id = 91348372558295 },
+
+		{ Name = "Jonathan", Id = 120629563851640 },
+		{ Name = "Killer Queen", Id = 104714163485875 },
+		{ Name = "Dio", Id = 138467089338692 },
+		{ Name = "Dio OH", Id = 96658788627102 },
+		{ Name = "Joseph", Id = 87470625500564 },
+		{ Name = "Jolyne", Id = 97892708412696 },
+		{ Name = "Diego", Id = 127117233320016 },
+		{ Name = "Polnareff", Id = 104647713661701 },
+		{ Name = "Jotaro", Id = 134878791451155 },
+		{ Name = "Funny V", Id = 88859285630202 },
+		{ Name = "Johnny", Id = 77834689346843 },
+		{ Name = "Made in Heaven", Id = 79234770032233 },
+		{ Name = "Mahito", Id = 92585001378279 },
+		{ Name = "Honored One", Id = 139000839803032 },
+		{ Name = "Gon Rage", Id = 136678571910037 },
+		{ Name = "Sol's RNG 1", Id = 125722696765151 },
+		{ Name = "Luffy", Id = 107520488394848 },
+		{ Name = "Sans", Id = 123627677663418 },
+		{ Name = "Fake R6", Id = 96518514398708 },
+		{ Name = "Goku Warm Up", Id = 84773442399798 },
+		{ Name = "Goku UI/Mui", Id = 130104867308995 },
+		{ Name = "Goku Black", Id = 110240143520283 },
+		{ Name = "Sukuna", Id = 82974857632552 },
+		{ Name = "Toji", Id = 113657065279101 },
+		{ Name = "Isagi", Id = 135818607077529 },
+		{ Name = "Yuji", Id = 103088653217891 },
+		{ Name = "Lavinho", Id = 92045987196732 },
+		{ Name = "Ippo", Id = 76110924880592 },
+		{ Name = "Aizen", Id = 83896268225208 },
+		{ Name = "Kaneki", Id = 116671111363578 },
+		{ Name = "Tanjiro", Id = 118533315464114 },
+		{ Name = "Head Hold", Id = 129453036635884 },
+		{ Name = "Robot Perform", Id = 105174189783870 },
+
+		-- Added Idles (requested)
+		{ Name = "Springtrap", Id = 90257184304714 },
+		{ Name = "Hmmm Float", Id = 107666091494733 },
+		{ Name = "OG Golden Freddy", Id = 138402679058341 },
+		{ Name = "Wally West", Id = 106169111259587 },
+		{ Name = "𝓛", Id = 103267638009024 },
+		{ Name = "Robot Malfunction", Id = 110419039625879 },
+	},
+
+	Walk = {
+		{ Name = "Football/Soccer", Id = 116881956670910 },
+		{ Name = "Naruto", Id = 81851725854678 },
+		{ Name = "Animal", Id = 87721497492370 },
+		{ Name = "Fredbear", Id = 133284420439423 },
+		{ Name = "Cute Anime", Id = 106767496454996 },
+	},
+
+	Run = {
+		{ Name = "Football/Soccer", Id = 116881956670910 },
+		{ Name = "Animal", Id = 87721497492370 },
+		{ Name = "Fredbear", Id = 133284420439423 },
+		{ Name = "Cute Anime", Id = 106767496454996 },
+
+		{ Name = "Tall", Id = 134010853417610 },
+		{ Name = "Officer Earl", Id = 104646820775114 },
+		{ Name = "AOT Titan", Id = 95363958550738 },
+		{ Name = "Captain JS", Id = 87806542116815 },
+		{ Name = "Ninja Sprint", Id = 123763532572423 },
+		{ Name = "IDEK", Id = 101293881003047 },
+		{ Name = "Honored One", Id = 82260970223217 },
+		{ Name = "Head Hold", Id = 92715775326925 },
+
+		-- Robot Speed 3 moved here (requested)
+		{ Name = "Robot Speed 3", Id = 128047975332475 },
+
+		-- Added Runs (requested)
+		{ Name = "Springtrap Sturdy", Id = 80927378599036 },
+		{ Name = "UFO", Id = 118703314621593 },
+		{ Name = "Closed Eyes Vibe", Id = 117991470645633 },
+		{ Name = "Wally West", Id = 102622695004986 },
+		{ Name = "Squidward", Id = 82365330773489 },
+		{ Name = "On A Mission", Id = 113718116290824 },
+		{ Name = "Very Happy Run", Id = 86522070222739 },
+		{ Name = "Missile", Id = 92401041987431 },
+		{ Name = "I Wanna Run Away", Id = 78510387198062 },
+	},
+}
+
+-- Walk slower, run normal rule for Custom picks
+local CUSTOM_WALK_SLOW_MULT = 0.65
+local CUSTOM_WALK_MIN = 8
 
 --====================================================
 -- Flight Controller
@@ -730,7 +754,7 @@ function Flight:Update(dt)
 end
 
 --====================================================
--- Lighting Controller (unchanged)
+-- Lighting Controller
 --====================================================
 local LightingCtl = {}
 LightingCtl.__index = LightingCtl
@@ -738,10 +762,7 @@ LightingCtl.__index = LightingCtl
 function LightingCtl.new()
 	return setmetatable({
 		Captured = false,
-		Original = {
-			Props = {},
-			Sky = nil,
-		},
+		Original = { Props = {}, Sky = nil },
 		ActivePreset = "None",
 	}, LightingCtl)
 end
@@ -907,15 +928,11 @@ function LightingCtl:_applySkybox(presetName)
 
 	local sky = Instance.new("Sky")
 	sky.Name = "SOS_Sky"
-
 	for k, v in pairs(data) do
 		if v and typeof(v) == "string" then
-			pcall(function()
-				sky[k] = v
-			end)
+			pcall(function() sky[k] = v end)
 		end
 	end
-
 	sky.Parent = Lighting
 end
 
@@ -977,7 +994,6 @@ function LightingCtl:SetPreset(name)
 	self:_applyLightingProps(name)
 	self:_applySkybox(name)
 	self:_applyPresetEffectSettingsToExisting(name)
-
 	return true
 end
 
@@ -993,7 +1009,6 @@ function LightingCtl:ToggleEffect(effectKey, on)
 		else
 			self:_destroy("SOS_Bloom")
 		end
-
 	elseif effectKey == "ColorCorrection" then
 		if on then
 			local cc = self:_getOrCreate("ColorCorrectionEffect", "SOS_ColorCorrection")
@@ -1004,7 +1019,6 @@ function LightingCtl:ToggleEffect(effectKey, on)
 		else
 			self:_destroy("SOS_ColorCorrection")
 		end
-
 	elseif effectKey == "Atmosphere" then
 		if on then
 			local at = self:_getOrCreate("Atmosphere", "SOS_Atmosphere")
@@ -1017,7 +1031,6 @@ function LightingCtl:ToggleEffect(effectKey, on)
 		else
 			self:_destroy("SOS_Atmosphere")
 		end
-
 	elseif effectKey == "SunRays" then
 		if on then
 			local sr = self:_getOrCreate("SunRaysEffect", "SOS_SunRays")
@@ -1026,7 +1039,6 @@ function LightingCtl:ToggleEffect(effectKey, on)
 		else
 			self:_destroy("SOS_SunRays")
 		end
-
 	elseif effectKey == "DepthOfField" then
 		if on then
 			local dof = self:_getOrCreate("DepthOfFieldEffect", "SOS_DepthOfField")
@@ -1037,7 +1049,6 @@ function LightingCtl:ToggleEffect(effectKey, on)
 		else
 			self:_destroy("SOS_DepthOfField")
 		end
-
 	elseif effectKey == "MotionBlur" then
 		if on then
 			local mb = self:_getOrCreate("BlurEffect", "SOS_MotionBlur")
@@ -1110,7 +1121,6 @@ local function giveBetterSpeedCoil()
 	tool.CanBeDropped = false
 
 	local oldSpeed
-
 	tool.Equipped:Connect(function()
 		if hum and hum.Parent then
 			oldSpeed = hum.WalkSpeed
@@ -1127,9 +1137,7 @@ local function giveBetterSpeedCoil()
 
 	tool.Unequipped:Connect(function()
 		if hum and hum.Parent then
-			if oldSpeed then
-				hum.WalkSpeed = oldSpeed
-			end
+			if oldSpeed then hum.WalkSpeed = oldSpeed end
 			oldSpeed = nil
 		end
 	end)
@@ -1371,7 +1379,7 @@ local function playIntro(gui)
 end
 
 --====================================================
--- Anim Packs (data)
+-- Anim Packs (data + apply)
 --====================================================
 local AnimationPacks = {
 	Vampire = { Idle1=1083445855, Idle2=1083450166, Walk=1083473930, Run=1083462077, Jump=1083455352, Climb=1083439238, Fall=1083443587 },
@@ -1526,12 +1534,12 @@ function App.new()
 		MenuClosedPos = nil,
 		_MenuTween = nil,
 		_MenuAnimToken = 0,
-		_MenuReady = false,
 
 		Flight = Flight.new(),
 		Lighting = LightingCtl.new(),
 
 		OriginalWalkSpeed = nil,
+		PlayerSpeed = nil,
 	}, App)
 end
 
@@ -1615,7 +1623,6 @@ end
 
 function App:_setMenu(open, instant)
 	self.MenuOpen = open
-
 	if self.ArrowBtn then
 		self.ArrowBtn.Text = open and "˅" or "˄"
 	end
@@ -1696,6 +1703,25 @@ function App:_applyCustomWalkSpeedRule(hum, stateName)
 			hum.WalkSpeed = self.OriginalWalkSpeed
 		end
 	end
+end
+
+function App:SetPlayerSpeed(speed)
+	local s = tonumber(speed)
+	if not s then return false end
+	s = math.clamp(s, CONFIG.Player.SpeedMin, CONFIG.Player.SpeedMax)
+	s = math.floor(s + 0.5)
+
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		self.PlayerSpeed = s
+		return true
+	end
+
+	self.PlayerSpeed = s
+	self.OriginalWalkSpeed = s
+	hum.WalkSpeed = s
+	return true
 end
 
 function App:BuildUI()
@@ -1808,8 +1834,10 @@ function App:BuildUI()
 	self.PagesHolder = holder
 
 	local _, infoScroll = self:_makePage("Info")
+	local _, controlsScroll = self:_makePage("Controls")
 	local _, flyScroll = self:_makePage("Fly")
 	local _, animScroll = self:_makePage("Anim Packs")
+	local _, playerScroll = self:_makePage("Player")
 	local _, camScroll = self:_makePage("Camera")
 	local _, lightScroll = self:_makePage("Lighting")
 	local _, serverScroll = self:_makePage("Server")
@@ -1868,16 +1896,29 @@ function App:BuildUI()
 		end))
 	end
 
-	-- FLY TAB
+	-- CONTROLS TAB (new)
 	do
-		local header = UI.Text(flyScroll, "Controls", 16, true)
+		local header = UI.Text(controlsScroll, "Controls", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
 
-		local controls = UI.Text(flyScroll,
-			"PC:\n- Fly Toggle: F\n- Menu Toggle: H\n- Move: WASD + Q/E\n\nMouse look affects flight pitch.\nQ = 90 degrees down tilt\nE = no tilt",
+		local t = UI.Text(controlsScroll,
+			"PC:\n- Fly Toggle: F\n- Menu Toggle: H\n- Move: WASD\n- Up/Down: Q/E\n\nMouse Look:\n- Flight faces where your camera looks (up/down works).\n\nExtra Tilt:\n- Hold Q: tilt 90 degrees down\n- Hold E: no tilt\n\nMobile:\n- Use the Fly button (bottom-right)\n- Use the top arrow to open/close the menu",
 			14, false
 		)
-		controls.Size = UDim2.new(1, 0, 0, 160)
+		t.Size = UDim2.new(1, 0, 0, 260)
+	end
+
+	-- FLY TAB
+	do
+		local header = UI.Text(flyScroll, "Flight", 16, true)
+		header.Size = UDim2.new(1, 0, 0, 22)
+
+		local warn = UI.Text(flyScroll,
+			"Flight emote IDs must be published Creator Store emotes.\nIf you paste random IDs, it can fail.",
+			13, false
+		)
+		warn.Size = UDim2.new(1, 0, 0, 44)
+		warn.TextColor3 = Color3.fromRGB(210, 210, 210)
 
 		local emHdr = UI.Text(flyScroll, "Flight Emotes", 16, true)
 		emHdr.Size = UDim2.new(1, 0, 0, 22)
@@ -1992,13 +2033,13 @@ function App:BuildUI()
 		end))
 	end
 
-	-- ANIM PACKS TAB
+	-- ANIM PACKS TAB (Custom updated, TF2/NarutoRun/Samurai removed, Robot Speed 3 moved to Run)
 	do
 		local header = UI.Text(animScroll, "Anim Packs", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
 
-		local help = UI.Text(animScroll, "Pick a state, then choose a pack. Custom contains your IDs (Tall + your walk/run styles).", 13, false)
-		help.Size = UDim2.new(1, 0, 0, 44)
+		local help = UI.Text(animScroll, "Pick a state, then choose a pack. Custom contains your IDs.", 13, false)
+		help.Size = UDim2.new(1, 0, 0, 34)
 		help.TextColor3 = Color3.fromRGB(210, 210, 210)
 
 		local stateBar = Instance.new("ScrollingFrame")
@@ -2166,6 +2207,112 @@ function App:BuildUI()
 
 		setCategory(chosenCat)
 		setState(chosenState)
+	end
+
+	-- PLAYER TAB (new, after Anim Packs) with secondary tab "Speed"
+	do
+		local header = UI.Text(playerScroll, "Player", 16, true)
+		header.Size = UDim2.new(1, 0, 0, 22)
+
+		local hint = UI.Text(playerScroll, "Player settings.", 13, false)
+		hint.Size = UDim2.new(1, 0, 0, 22)
+		hint.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+		local bar = Instance.new("Frame")
+		bar.BackgroundTransparency = 1
+		bar.Size = UDim2.new(1, 0, 0, 44)
+		bar.Parent = playerScroll
+
+		local barLay = Instance.new("UIListLayout")
+		barLay.FillDirection = Enum.FillDirection.Horizontal
+		barLay.Padding = UDim.new(0, 10)
+		barLay.VerticalAlignment = Enum.VerticalAlignment.Center
+		barLay.Parent = bar
+
+		local speedTab = UI.Button(bar, "Speed")
+		speedTab.Size = UDim2.new(0, 140, 0, 36)
+
+		local speedPanel = Instance.new("Frame")
+		speedPanel.BackgroundTransparency = 1
+		speedPanel.Size = UDim2.new(1, 0, 0, 0)
+		speedPanel.AutomaticSize = Enum.AutomaticSize.Y
+		speedPanel.Parent = playerScroll
+
+		local spLay = Instance.new("UIListLayout")
+		spLay.SortOrder = Enum.SortOrder.LayoutOrder
+		spLay.Padding = UDim.new(0, 10)
+		spLay.Parent = speedPanel
+
+		setTabActive(speedTab, true)
+
+		local cur = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		local currentSpeed = cur and cur.WalkSpeed or (self.PlayerSpeed or 16)
+		currentSpeed = math.clamp(currentSpeed, CONFIG.Player.SpeedMin, CONFIG.Player.SpeedMax)
+		self.PlayerSpeed = math.floor(currentSpeed + 0.5)
+
+		local speedHdr = UI.Text(speedPanel, "WalkSpeed", 16, true)
+		speedHdr.Size = UDim2.new(1, 0, 0, 22)
+
+		local speedRow = Instance.new("Frame")
+		speedRow.BackgroundTransparency = 1
+		speedRow.Size = UDim2.new(1, 0, 0, 56)
+		speedRow.Parent = speedPanel
+
+		local speedLabel = UI.Text(speedRow, "Speed: " .. tostring(self.PlayerSpeed), 14, true)
+		speedLabel.Size = UDim2.new(1, 0, 0, 18)
+
+		local sliderBg = Instance.new("Frame")
+		sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		sliderBg.BackgroundTransparency = 0.15
+		sliderBg.BorderSizePixel = 0
+		sliderBg.Position = UDim2.new(0, 0, 0, 26)
+		sliderBg.Size = UDim2.new(1, 0, 0, 10)
+		sliderBg.Parent = speedRow
+		UI.Corner(sliderBg, 999)
+
+		local sliderFill = Instance.new("Frame")
+		sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+		sliderFill.BorderSizePixel = 0
+		sliderFill.Size = UDim2.new(0, 0, 1, 0)
+		sliderFill.Parent = sliderBg
+		UI.Corner(sliderFill, 999)
+
+		local knob = Instance.new("Frame")
+		knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+		knob.BorderSizePixel = 0
+		knob.Size = UDim2.new(0, 14, 0, 14)
+		knob.Parent = sliderBg
+		UI.Corner(knob, 999)
+
+		local function setPlayerSpeedFromAlpha(a)
+			a = clamp01(a)
+			local s = CONFIG.Player.SpeedMin + (CONFIG.Player.SpeedMax - CONFIG.Player.SpeedMin) * a
+			self:SetPlayerSpeed(s)
+			speedLabel.Text = "Speed: " .. tostring(self.PlayerSpeed or s)
+			sliderFill.Size = UDim2.new(a, 0, 1, 0)
+			knob.Position = UDim2.new(a, -7, 0.5, -7)
+		end
+
+		local alpha = (self.PlayerSpeed - CONFIG.Player.SpeedMin) / (CONFIG.Player.SpeedMax - CONFIG.Player.SpeedMin)
+		setPlayerSpeedFromAlpha(alpha)
+
+		local dragging = false
+		self.Maid:Give(sliderBg.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+			end
+		end))
+		self.Maid:Give(sliderBg.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+			end
+		end))
+		self.Maid:Give(UserInputService.InputChanged:Connect(function(i)
+			if not dragging then return end
+			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+			local a2 = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+			setPlayerSpeedFromAlpha(a2)
+		end))
 	end
 
 	-- LIGHTING TAB
@@ -2403,16 +2550,18 @@ function App:BuildUI()
 	fillEmpty(camScroll, "Camera controls (coming soon)")
 	fillEmpty(clientScroll, "Client controls (coming soon)")
 
-	-- Tabs
+	-- Tabs (Controls inserted next to Info, Player after Anim Packs)
 	self:_addTab("Info", 1)
-	self:_addTab("Fly", 2)
-	self:_addTab("Anim Packs", 3)
-	self:_addTab("Camera", 4)
-	self:_addTab("Lighting", 5)
-	self:_addTab("Server", 6)
-	self:_addTab("Client", 7)
+	self:_addTab("Controls", 2)
+	self:_addTab("Fly", 3)
+	self:_addTab("Anim Packs", 4)
+	self:_addTab("Player", 5)
+	self:_addTab("Camera", 6)
+	self:_addTab("Lighting", 7)
+	self:_addTab("Server", 8)
+	self:_addTab("Client", 9)
 	if micupScroll then
-		self:_addTab("Mic up", 8)
+		self:_addTab("Mic up", 10)
 	end
 
 	self.Pages["Info"].Page.Visible = true
@@ -2476,7 +2625,14 @@ function App:BindCharacter()
 
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then
-			self.OriginalWalkSpeed = hum.WalkSpeed
+			if self.PlayerSpeed then
+				hum.WalkSpeed = self.PlayerSpeed
+				self.OriginalWalkSpeed = self.PlayerSpeed
+			else
+				self.OriginalWalkSpeed = hum.WalkSpeed
+				self.PlayerSpeed = hum.WalkSpeed
+			end
+
 			for state, asset in pairs(StateOverrides) do
 				if asset then
 					applyStateOverride(char, hum, state, asset)
