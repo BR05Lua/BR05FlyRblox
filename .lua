@@ -364,7 +364,6 @@ local CustomAnims = {
 		{ Name = "Head Hold", Id = 129453036635884 },
 		{ Name = "Robot Perform", Id = 105174189783870 },
 
-		-- Added Idles (requested)
 		{ Name = "Springtrap", Id = 90257184304714 },
 		{ Name = "Hmmm Float", Id = 107666091494733 },
 		{ Name = "OG Golden Freddy", Id = 138402679058341 },
@@ -396,10 +395,8 @@ local CustomAnims = {
 		{ Name = "Honored One", Id = 82260970223217 },
 		{ Name = "Head Hold", Id = 92715775326925 },
 
-		-- Robot Speed 3 moved here (requested)
 		{ Name = "Robot Speed 3", Id = 128047975332475 },
 
-		-- Added Runs (requested)
 		{ Name = "Springtrap Sturdy", Id = 80927378599036 },
 		{ Name = "UFO", Id = 118703314621593 },
 		{ Name = "Closed Eyes Vibe", Id = 117991470645633 },
@@ -412,7 +409,6 @@ local CustomAnims = {
 	},
 }
 
--- Walk slower, run normal rule for Custom picks
 local CUSTOM_WALK_SLOW_MULT = 0.65
 local CUSTOM_WALK_MIN = 8
 
@@ -1125,13 +1121,6 @@ local function giveBetterSpeedCoil()
 		if hum and hum.Parent then
 			oldSpeed = hum.WalkSpeed
 			hum.WalkSpeed = CONFIG.MicUp.Coil.WalkSpeed
-			for _, tr in ipairs(hum:GetPlayingAnimationTracks()) do
-				pcall(function()
-					if tr.Priority == Enum.AnimationPriority.Action then
-						tr:Stop(0)
-					end
-				end)
-			end
 		end
 	end)
 
@@ -1529,7 +1518,6 @@ function App.new()
 		MenuOpen = false,
 		ToggleMenuFn = nil,
 
-		-- Robust menu animation state
 		MenuOpenPos = nil,
 		MenuClosedPos = nil,
 		_MenuTween = nil,
@@ -1540,6 +1528,10 @@ function App.new()
 
 		OriginalWalkSpeed = nil,
 		PlayerSpeed = nil,
+
+		-- Camera feature state
+		CameraAttachChoice = "Humanoid",
+		CameraOffset = Vector3.new(0, 0, 0),
 	}, App)
 end
 
@@ -1724,6 +1716,126 @@ function App:SetPlayerSpeed(speed)
 	return true
 end
 
+--====================================================
+-- Camera features (kept: attach + offset)
+--====================================================
+function App:SetCameraOffset(x, y, z)
+	local nx = tonumber(x) or self.CameraOffset.X
+	local ny = tonumber(y) or self.CameraOffset.Y
+	local nz = tonumber(z) or self.CameraOffset.Z
+	self.CameraOffset = Vector3.new(nx, ny, nz)
+	self:ApplyCameraSettings()
+end
+
+function App:SetCameraAttach(choice)
+	self.CameraAttachChoice = tostring(choice or "Humanoid")
+	self:ApplyCameraSettings()
+end
+
+function App:ApplyCameraSettings()
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not char or not hum or not Camera then return end
+
+	pcall(function()
+		hum.CameraOffset = self.CameraOffset
+	end)
+
+	local subject = hum
+	if self.CameraAttachChoice ~= "Humanoid" then
+		local part = char:FindFirstChild(self.CameraAttachChoice)
+		if not part and self.CameraAttachChoice == "UpperTorso" then part = char:FindFirstChild("Torso") end
+		if not part and self.CameraAttachChoice == "LowerTorso" then part = char:FindFirstChild("Torso") end
+		if part then
+			subject = part
+		end
+	end
+
+	pcall(function()
+		Camera.CameraType = Enum.CameraType.Custom
+		Camera.CameraSubject = subject
+	end)
+end
+
+--====================================================
+-- UI helpers for sliders
+--====================================================
+function App:_makeSlider(parent, titleText, minV, maxV, getV, setV)
+	local wrap = Instance.new("Frame")
+	wrap.BackgroundTransparency = 1
+	wrap.Size = UDim2.new(1, 0, 0, 56)
+	wrap.Parent = parent
+
+	local label = UI.Text(wrap, "", 14, true)
+	label.Size = UDim2.new(1, 0, 0, 18)
+
+	local sliderBg = Instance.new("Frame")
+	sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	sliderBg.BackgroundTransparency = 0.15
+	sliderBg.BorderSizePixel = 0
+	sliderBg.Position = UDim2.new(0, 0, 0, 26)
+	sliderBg.Size = UDim2.new(1, 0, 0, 10)
+	sliderBg.Parent = wrap
+	UI.Corner(sliderBg, 999)
+
+	local sliderFill = Instance.new("Frame")
+	sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Size = UDim2.new(0, 0, 1, 0)
+	sliderFill.Parent = sliderBg
+	UI.Corner(sliderFill, 999)
+
+	local knob = Instance.new("Frame")
+	knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	knob.BorderSizePixel = 0
+	knob.Size = UDim2.new(0, 14, 0, 14)
+	knob.Parent = sliderBg
+	UI.Corner(knob, 999)
+
+	local function setFromAlpha(a)
+		a = clamp01(a)
+		local v = minV + (maxV - minV) * a
+		setV(v)
+		label.Text = titleText .. ": " .. tostring(math.floor((getV() * 100) + 0.5) / 100)
+		sliderFill.Size = UDim2.new(a, 0, 1, 0)
+		knob.Position = UDim2.new(a, -7, 0.5, -7)
+	end
+
+	local function refresh()
+		local v = getV()
+		local a = 0
+		if maxV ~= minV then
+			a = (v - minV) / (maxV - minV)
+		end
+		setFromAlpha(a)
+	end
+
+	refresh()
+
+	local dragging = false
+	self.Maid:Give(sliderBg.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+		end
+	end))
+	self.Maid:Give(sliderBg.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end))
+	self.Maid:Give(UserInputService.InputChanged:Connect(function(i)
+		if not dragging then return end
+		if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+		local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+		setFromAlpha(a)
+	end))
+
+	return refresh
+end
+
+--====================================================
+-- Build UI
+--====================================================
 function App:BuildUI()
 	if self.GUI then self.GUI:Destroy() end
 
@@ -1896,7 +2008,7 @@ function App:BuildUI()
 		end))
 	end
 
-	-- CONTROLS TAB (new)
+	-- CONTROLS TAB
 	do
 		local header = UI.Text(controlsScroll, "Controls", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
@@ -2033,7 +2145,7 @@ function App:BuildUI()
 		end))
 	end
 
-	-- ANIM PACKS TAB (Custom updated, TF2/NarutoRun/Samurai removed, Robot Speed 3 moved to Run)
+	-- ANIM PACKS TAB
 	do
 		local header = UI.Text(animScroll, "Anim Packs", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
@@ -2209,7 +2321,7 @@ function App:BuildUI()
 		setState(chosenState)
 	end
 
-	-- PLAYER TAB (new, after Anim Packs) with secondary tab "Speed"
+	-- PLAYER TAB
 	do
 		local header = UI.Text(playerScroll, "Player", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
@@ -2218,45 +2330,18 @@ function App:BuildUI()
 		hint.Size = UDim2.new(1, 0, 0, 22)
 		hint.TextColor3 = Color3.fromRGB(210, 210, 210)
 
-		local bar = Instance.new("Frame")
-		bar.BackgroundTransparency = 1
-		bar.Size = UDim2.new(1, 0, 0, 44)
-		bar.Parent = playerScroll
-
-		local barLay = Instance.new("UIListLayout")
-		barLay.FillDirection = Enum.FillDirection.Horizontal
-		barLay.Padding = UDim.new(0, 10)
-		barLay.VerticalAlignment = Enum.VerticalAlignment.Center
-		barLay.Parent = bar
-
-		local speedTab = UI.Button(bar, "Speed")
-		speedTab.Size = UDim2.new(0, 140, 0, 36)
-
-		local speedPanel = Instance.new("Frame")
-		speedPanel.BackgroundTransparency = 1
-		speedPanel.Size = UDim2.new(1, 0, 0, 0)
-		speedPanel.AutomaticSize = Enum.AutomaticSize.Y
-		speedPanel.Parent = playerScroll
-
-		local spLay = Instance.new("UIListLayout")
-		spLay.SortOrder = Enum.SortOrder.LayoutOrder
-		spLay.Padding = UDim.new(0, 10)
-		spLay.Parent = speedPanel
-
-		setTabActive(speedTab, true)
-
 		local cur = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		local currentSpeed = cur and cur.WalkSpeed or (self.PlayerSpeed or 16)
 		currentSpeed = math.clamp(currentSpeed, CONFIG.Player.SpeedMin, CONFIG.Player.SpeedMax)
 		self.PlayerSpeed = math.floor(currentSpeed + 0.5)
 
-		local speedHdr = UI.Text(speedPanel, "WalkSpeed", 16, true)
+		local speedHdr = UI.Text(playerScroll, "WalkSpeed", 16, true)
 		speedHdr.Size = UDim2.new(1, 0, 0, 22)
 
 		local speedRow = Instance.new("Frame")
 		speedRow.BackgroundTransparency = 1
 		speedRow.Size = UDim2.new(1, 0, 0, 56)
-		speedRow.Parent = speedPanel
+		speedRow.Parent = playerScroll
 
 		local speedLabel = UI.Text(speedRow, "Speed: " .. tostring(self.PlayerSpeed), 14, true)
 		speedLabel.Size = UDim2.new(1, 0, 0, 18)
@@ -2312,6 +2397,138 @@ function App:BuildUI()
 			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
 			local a2 = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
 			setPlayerSpeedFromAlpha(a2)
+		end))
+	end
+
+	-- CAMERA TAB (mouse/cursor part removed)
+	do
+		local header = UI.Text(camScroll, "Camera", 16, true)
+		header.Size = UDim2.new(1, 0, 0, 22)
+
+		local hint = UI.Text(camScroll,
+			"Attach camera to different parts and adjust offset.",
+			13, false
+		)
+		hint.Size = UDim2.new(1, 0, 0, 34)
+		hint.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+		local attachHdr = UI.Text(camScroll, "Attach To", 16, true)
+		attachHdr.Size = UDim2.new(1, 0, 0, 22)
+
+		local attachBar = Instance.new("ScrollingFrame")
+		attachBar.BackgroundTransparency = 1
+		attachBar.BorderSizePixel = 0
+		attachBar.Size = UDim2.new(1, 0, 0, 46)
+		attachBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+		attachBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+		attachBar.ScrollingDirection = Enum.ScrollingDirection.X
+		attachBar.ScrollBarThickness = 2
+		attachBar.Parent = camScroll
+
+		local attachLay = Instance.new("UIListLayout")
+		attachLay.FillDirection = Enum.FillDirection.Horizontal
+		attachLay.SortOrder = Enum.SortOrder.LayoutOrder
+		attachLay.Padding = UDim.new(0, 10)
+		attachLay.Parent = attachBar
+
+		local attachButtons = {}
+		local attachOptions = {
+			{ Name = "Humanoid", Target = "Humanoid" },
+			{ Name = "Head", Target = "Head" },
+			{ Name = "Root", Target = "HumanoidRootPart" },
+			{ Name = "UpperTorso", Target = "UpperTorso" },
+			{ Name = "LowerTorso", Target = "LowerTorso" },
+			{ Name = "LeftHand", Target = "LeftHand" },
+			{ Name = "RightHand", Target = "RightHand" },
+		}
+
+		local function refreshAttachButtons()
+			for _, info in ipairs(attachOptions) do
+				local b = attachButtons[info.Target]
+				if b then
+					setTabActive(b, self.CameraAttachChoice == info.Target)
+				end
+			end
+		end
+
+		for _, info in ipairs(attachOptions) do
+			local b = UI.Button(attachBar, info.Name)
+			b.Size = UDim2.new(0, 140, 0, 38)
+			attachButtons[info.Target] = b
+			self.Maid:Give(b.MouseButton1Click:Connect(function()
+				self:SetCameraAttach(info.Target)
+				refreshAttachButtons()
+				notify("Camera", "Attached to: " .. info.Name, 2)
+			end))
+		end
+
+		local customRow = Instance.new("Frame")
+		customRow.BackgroundTransparency = 1
+		customRow.Size = UDim2.new(1, 0, 0, 44)
+		customRow.Parent = camScroll
+
+		local customLbl = UI.Text(customRow, "Custom Part:", 14, true)
+		customLbl.Size = UDim2.new(0, 120, 1, 0)
+
+		local customBox = UI.Input(customRow, "Type part name (e.g. Torso)")
+		customBox.Size = UDim2.new(1, -240, 0, 36)
+		customBox.Position = UDim2.new(0, 130, 0, 4)
+
+		local customApply = UI.Button(customRow, "Apply")
+		customApply.Size = UDim2.new(0, 90, 0, 36)
+		customApply.Position = UDim2.new(1, -100, 0, 4)
+
+		local customReset = UI.Button(customRow, "Reset")
+		customReset.Size = UDim2.new(0, 90, 0, 36)
+		customReset.Position = UDim2.new(1, -10, 0, 4)
+		customReset.AnchorPoint = Vector2.new(1, 0)
+
+		self.Maid:Give(customApply.MouseButton1Click:Connect(function()
+			local name = tostring(customBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+			if name == "" then
+				notify("Camera", "Enter a part name first.", 2)
+				return
+			end
+			self:SetCameraAttach(name)
+			refreshAttachButtons()
+			notify("Camera", "Trying: " .. name, 2)
+		end))
+
+		self.Maid:Give(customReset.MouseButton1Click:Connect(function()
+			customBox.Text = ""
+			self:SetCameraAttach("Humanoid")
+			refreshAttachButtons()
+			notify("Camera", "Reset attach to Humanoid.", 2)
+		end))
+
+		refreshAttachButtons()
+
+		local offsetHdr = UI.Text(camScroll, "Offset", 16, true)
+		offsetHdr.Size = UDim2.new(1, 0, 0, 22)
+
+		local offNote = UI.Text(camScroll, "Left/Right = X, Up/Down = Y (optional Forward/Back = Z).", 13, false)
+		offNote.Size = UDim2.new(1, 0, 0, 22)
+		offNote.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+		self:_makeSlider(camScroll, "X (Left/Right)", -6, 6,
+			function() return self.CameraOffset.X end,
+			function(v) self:SetCameraOffset(v, nil, nil) end
+		)
+		self:_makeSlider(camScroll, "Y (Up/Down)", -6, 6,
+			function() return self.CameraOffset.Y end,
+			function(v) self:SetCameraOffset(nil, v, nil) end
+		)
+		self:_makeSlider(camScroll, "Z (Forward/Back)", -6, 6,
+			function() return self.CameraOffset.Z end,
+			function(v) self:SetCameraOffset(nil, nil, v) end
+		)
+
+		local resetOffset = UI.Button(camScroll, "Reset Offset")
+		resetOffset.Size = UDim2.new(1, 0, 0, 38)
+		self.Maid:Give(resetOffset.MouseButton1Click:Connect(function()
+			self.CameraOffset = Vector3.new(0, 0, 0)
+			self:ApplyCameraSettings()
+			notify("Camera", "Offset reset.", 2)
 		end))
 	end
 
@@ -2542,15 +2759,13 @@ function App:BuildUI()
 		end))
 	end
 
-	-- Placeholders
-	local function fillEmpty(scroll, text)
-		local t = UI.Text(scroll, text, 14, true)
+	-- Client placeholder
+	do
+		local t = UI.Text(clientScroll, "Client controls (coming soon)", 14, true)
 		t.Size = UDim2.new(1, 0, 0, 60)
 	end
-	fillEmpty(camScroll, "Camera controls (coming soon)")
-	fillEmpty(clientScroll, "Client controls (coming soon)")
 
-	-- Tabs (Controls inserted next to Info, Player after Anim Packs)
+	-- Tabs
 	self:_addTab("Info", 1)
 	self:_addTab("Controls", 2)
 	self:_addTab("Fly", 3)
@@ -2638,6 +2853,8 @@ function App:BindCharacter()
 					applyStateOverride(char, hum, state, asset)
 				end
 			end
+
+			self:ApplyCameraSettings()
 		end
 
 		if self.Flight.Flying then
@@ -2693,4 +2910,5 @@ app:BindInputs()
 app:BindCharacter()
 app:StartLoops()
 
+app:ApplyCameraSettings()
 notify("SOS HUD", "Loaded.", 2)
