@@ -13,7 +13,29 @@
 
 	Small British note: if this breaks, it was definitely lag. Not your fault. Probably.
 ]]
+local queue_on_teleport = syn and syn.queue_on_teleport or queue_on_teleport
 
+if queue_on_teleport then
+    local TeleportCheck = false
+    game:GetService("Players").LocalPlayer.OnTeleport:Connect(function(State)
+        if not TeleportCheck then
+            TeleportCheck = true
+            queue_on_teleport([[
+
+                loadstring(game:HttpGet("link"))()
+            ]])
+        end
+    end)
+    
+    if syn and syn.is_in_teleport then
+        queue_on_teleport([[
+            -- Same script as above
+            loadstring(game:HttpGet("link"))()
+        ]])
+    end
+else
+    warn("Your exploit doesn't support queue_on_teleport")
+end
 --------------------------------------------------------------------
 -- EARLY LOAD YIELD (join safe)
 --------------------------------------------------------------------
@@ -1564,7 +1586,7 @@ local SinProfiles = {
 	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
 }
 
-local SOS_MARKER = "¬"
+local SOS_MARKER = "𖺗"
 local AK_MARKER_1 = "؍؍؍"
 local AK_MARKER_2 = "؍"
 local FAKE_AK_MARKER = ",,κžκåçţíѷåţȇđ,,"
