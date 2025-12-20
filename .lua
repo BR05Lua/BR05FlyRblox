@@ -1,28 +1,13 @@
 --[[
-	SOS HUD (The Sins Of Scripting)
+	SOS HUD
 	Single LocalScript (StarterPlayerScripts recommended)
 
-	Core kept:
-	- Smooth superman-style flight (BodyGyro + BodyVelocity), tilt 85 degrees
-	- WASD movement relative to camera, Q/E up/down
-	- Footstep/run sound mute while flying
-	- Mobile Fly button (bottom-right)
-	- Top pop-down glass menu with red outline + arrow toggle (no dragging)
+	Update in this version:
+	- Mini red "AK" shows on a player's tag if they type "؍؍؍" or "؍"
+	- They do NOT need to have the Sin role for the AK to show
+	- Typing the AK marker also forces them to get an SOS tag (so the AK has something to appear on)
 
-	Fixed now:
-	- Lighting crash fixed (Atmosphere has NO .Enabled, and Sky has no .Enabled)
-	- If a lighting toggle is OFF, we destroy that SOS effect instead of toggling invalid properties
-	- Anim override saving fixed (your saved overrides now actually load properly)
-	- Intro UI removed (per request) but intro sound still plays
-	- Menu builds immediately (no 2 second delay), starts CLOSED, and opens/closes reliably
-
-	Added back:
-	- Mic up tab VIP button: gives "Better Speed Coil" (invisible tool, speed 111) if you own any VIP pass listed
-	- Button click sound on every button: 111174530730534
-
-	Note:
-	- Persistent saving across sessions needs an executor that supports writefile/readfile.
-	  Otherwise it will persist via Player Attributes during the same session.
+	(If this breaks, blame ping. Classic.)
 ]]
 
 --------------------------------------------------------------------
@@ -38,7 +23,8 @@ local GuiService = game:GetService("GuiService")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local Debris = game:GetService("Debris")
-local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:FindService("TextChatService")
 
 local LocalPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -83,29 +69,23 @@ local MICUP_PLACE_IDS = {
 
 local DISCORD_LINK = "https://discord.gg/cacg7kvX"
 
--- Intro sound (no intro UI)
+-- Sounds
 local INTRO_SOUND_ID = "rbxassetid://1843492223"
 
--- Button click sound
 local BUTTON_CLICK_SOUND_ID = "rbxassetid://111174530730534"
 local BUTTON_CLICK_VOLUME = 0.6
 
--- Camera defaults captured on first setup
+-- Camera defaults
 local DEFAULT_FOV = nil
 local DEFAULT_CAM_MIN_ZOOM = nil
 local DEFAULT_CAM_MAX_ZOOM = nil
-local DEFAULT_CAMERA_SUBJECT_MODE = "Humanoid"
+
+-- Infinite zoom
 local INFINITE_ZOOM = 1e9
 
 -- Saved settings key
 local SETTINGS_FILE_PREFIX = "SOS_HUD_Settings_"
 local SETTINGS_ATTR_NAME = "SOS_HUD_SETTINGS_JSON"
-
--- VIP gamepasses
-local VIP_GAMEPASSES = {
-	951459548,
-	28828491,
-}
 
 --------------------------------------------------------------------
 -- STATE
@@ -139,16 +119,6 @@ local ANIM_SWITCH_COOLDOWN = 0.25
 local ANIM_TO_FLY_THRESHOLD = 0.22
 local ANIM_TO_FLOAT_THRESHOLD = 0.12
 
-local VALID_ANIM_STATES = {
-	Idle = true,
-	Walk = true,
-	Run = true,
-	Jump = true,
-	Climb = true,
-	Fall = true,
-	Swim = true,
-}
-
 local stateOverrides = {
 	Idle = nil,
 	Walk = nil,
@@ -158,7 +128,6 @@ local stateOverrides = {
 	Fall = nil,
 	Swim = nil,
 }
-
 local lastChosenState = "Idle"
 local lastChosenCategory = "Custom"
 
@@ -167,7 +136,8 @@ local DEFAULT_WALKSPEED = nil
 local playerSpeed = nil
 
 -- Camera settings
-local camSubjectMode = DEFAULT_CAMERA_SUBJECT_MODE
+-- Keep CameraSubject = Humanoid always to preserve Shift Lock
+local camAttachMode = "Humanoid"
 local camOffset = Vector3.new(0, 0, 0)
 local camFov = nil
 local camMaxZoom = INFINITE_ZOOM
@@ -296,7 +266,7 @@ end
 
 local function buildSettingsTable()
 	return {
-		Version = 1,
+		Version = 2,
 		UserId = LocalPlayer.UserId,
 
 		FLOAT_ID = FLOAT_ID,
@@ -305,7 +275,7 @@ local function buildSettingsTable()
 
 		PlayerSpeed = playerSpeed,
 
-		CamSubjectMode = camSubjectMode,
+		CamSubjectMode = camAttachMode,
 		CamOffset = { camOffset.X, camOffset.Y, camOffset.Z },
 		CamFov = camFov,
 		CamMaxZoom = camMaxZoom,
@@ -323,19 +293,15 @@ local function applySettingsTable(s)
 
 	if typeof(s.FLOAT_ID) == "string" then FLOAT_ID = s.FLOAT_ID end
 	if typeof(s.FLY_ID) == "string" then FLY_ID = s.FLY_ID end
-	if typeof(s.FlySpeed) == "number" then
-		flySpeed = math.clamp(math.floor(s.FlySpeed + 0.5), minFlySpeed, maxFlySpeed)
-	end
+	if typeof(s.FlySpeed) == "number" then flySpeed = math.clamp(math.floor(s.FlySpeed + 0.5), minFlySpeed, maxFlySpeed) end
 
 	if typeof(s.PlayerSpeed) == "number" then
 		playerSpeed = math.clamp(math.floor(s.PlayerSpeed + 0.5), 2, 500)
 	end
 
-	if typeof(s.CamSubjectMode) == "string" then camSubjectMode = s.CamSubjectMode end
+	if typeof(s.CamSubjectMode) == "string" then camAttachMode = s.CamSubjectMode end
 	if typeof(s.CamOffset) == "table" and #s.CamOffset >= 3 then
-		local x = tonumber(s.CamOffset[1]) or 0
-		local y = tonumber(s.CamOffset[2]) or 0
-		local z = tonumber(s.CamOffset[3]) or 0
+		local x, y, z = tonumber(s.CamOffset[1]) or 0, tonumber(s.CamOffset[2]) or 0, tonumber(s.CamOffset[3]) or 0
 		camOffset = Vector3.new(x, y, z)
 	end
 	if typeof(s.CamFov) == "number" then camFov = math.clamp(s.CamFov, 40, 120) end
@@ -343,15 +309,12 @@ local function applySettingsTable(s)
 
 	if typeof(s.AnimOverrides) == "table" then
 		for k, v in pairs(s.AnimOverrides) do
-			if VALID_ANIM_STATES[k] then
+			if stateOverrides[k] ~= nil then
 				stateOverrides[k] = v
 			end
 		end
 	end
-
-	if typeof(s.LastAnimState) == "string" and VALID_ANIM_STATES[s.LastAnimState] then
-		lastChosenState = s.LastAnimState
-	end
+	if typeof(s.LastAnimState) == "string" then lastChosenState = s.LastAnimState end
 	if typeof(s.LastAnimCategory) == "string" then lastChosenCategory = s.LastAnimCategory end
 
 	if typeof(s.Lighting) == "table" then
@@ -429,6 +392,7 @@ local function ensureClickSoundTemplate()
 	s.Name = "SOS_ButtonClickTemplate"
 	s.SoundId = BUTTON_CLICK_SOUND_ID
 	s.Volume = BUTTON_CLICK_VOLUME
+	s.PlayOnRemove = false
 	s.Looped = false
 	s.Parent = gui
 	clickSoundTemplate = s
@@ -442,7 +406,9 @@ local function playButtonClick()
 	local s = tmpl:Clone()
 	s.Name = "SOS_ButtonClick"
 	s.Parent = gui
-	pcall(function() s:Play() end)
+	pcall(function()
+		s:Play()
+	end)
 	Debris:AddItem(s, 3)
 end
 
@@ -480,21 +446,6 @@ local function setupGlobalButtonSounds(root)
 			attachSoundToButton(d)
 		end
 	end)
-end
-
---------------------------------------------------------------------
--- INTRO SOUND ONLY
---------------------------------------------------------------------
-local function playIntroSoundOnly()
-	if not gui then return end
-	local s = Instance.new("Sound")
-	s.Name = "SOS_IntroSound"
-	s.SoundId = INTRO_SOUND_ID
-	s.Volume = 0.9
-	s.Looped = false
-	s.Parent = gui
-	pcall(function() s:Play() end)
-	Debris:AddItem(s, 8)
 end
 
 --------------------------------------------------------------------
@@ -1123,7 +1074,7 @@ local function setTabButtonActive(btn, active)
 end
 
 --------------------------------------------------------------------
--- LIGHTING SYSTEM (safe, no invalid .Enabled on Atmosphere/Sky)
+-- LIGHTING SYSTEM (safe toggles)
 --------------------------------------------------------------------
 local ORIGINAL_LIGHTING = {
 	Ambient = Lighting.Ambient,
@@ -1153,7 +1104,7 @@ ORIGINAL_LIGHTING.Atmosphere = cloneIfExists("Atmosphere")
 ORIGINAL_LIGHTING.Bloom = cloneIfExists("BloomEffect")
 ORIGINAL_LIGHTING.ColorCorrection = cloneIfExists("ColorCorrectionEffect")
 ORIGINAL_LIGHTING.DepthOfField = cloneIfExists("DepthOfFieldEffect")
-ORIGINAL_LIGHTING.Blur = cloneIfExists("BlurEffect")
+ORIGINAL_LIGHTING.MotionBlur = cloneIfExists("BlurEffect")
 ORIGINAL_LIGHTING.SunRays = cloneIfExists("SunRaysEffect")
 
 local function getOrCreateEffect(className, name)
@@ -1168,11 +1119,6 @@ local function getOrCreateEffect(className, name)
 	newInst.Name = name
 	newInst.Parent = Lighting
 	return newInst
-end
-
-local function destroyIfExists(name)
-	local inst = Lighting:FindFirstChild(name)
-	if inst then inst:Destroy() end
 end
 
 local SKY_PRESETS = {
@@ -1242,6 +1188,32 @@ local LightingState = {
 	},
 }
 
+local SOS_ATM_DEFAULT = {
+	Density = 0.32,
+	Offset = 0.1,
+	Color = Color3.fromRGB(210, 200, 255),
+	Decay = Color3.fromRGB(70, 60, 90),
+	Glare = 0.12,
+	Haze = 1,
+}
+
+local function setAtmosphereOn(atm)
+	if not atm then return end
+	atm.Density = SOS_ATM_DEFAULT.Density
+	atm.Offset = SOS_ATM_DEFAULT.Offset
+	atm.Color = SOS_ATM_DEFAULT.Color
+	atm.Decay = SOS_ATM_DEFAULT.Decay
+	atm.Glare = SOS_ATM_DEFAULT.Glare
+	atm.Haze = SOS_ATM_DEFAULT.Haze
+end
+
+local function setAtmosphereOff(atm)
+	if not atm then return end
+	atm.Density = 0
+	atm.Glare = 0
+	atm.Haze = 0
+end
+
 local function writeLightingSaveState()
 	_G.__SOS_LightingSaveState = {
 		Enabled = LightingState.Enabled,
@@ -1272,6 +1244,65 @@ local function applyFancyDefaults()
 	Lighting.ExposureCompensation = 0.15
 end
 
+local function applySkyPreset(name)
+	LightingState.SelectedSky = name
+	writeLightingSaveState()
+
+	if not LightingState.Enabled then return end
+
+	local preset = SKY_PRESETS[name]
+	if not preset then return end
+
+	if LightingState.Toggles.Sky then
+		local sky = getOrCreateEffect("Sky", "SOS_Sky")
+		sky.SkyboxBk = preset.Sky.Bk
+		sky.SkyboxDn = preset.Sky.Dn
+		sky.SkyboxFt = preset.Sky.Ft
+		sky.SkyboxLf = preset.Sky.Lf
+		sky.SkyboxRt = preset.Sky.Rt
+		sky.SkyboxUp = preset.Sky.Up
+	end
+
+	applyFancyDefaults()
+
+	local cc = getOrCreateEffect("ColorCorrectionEffect", "SOS_ColorCorrection")
+	cc.Enabled = LightingState.Toggles.ColorCorrection
+	cc.Brightness = 0.02
+	cc.Contrast = 0.18
+	cc.Saturation = 0.06
+	cc.TintColor = Color3.fromRGB(255, 240, 240)
+
+	local bloom = getOrCreateEffect("BloomEffect", "SOS_Bloom")
+	bloom.Enabled = LightingState.Toggles.Bloom
+	bloom.Intensity = 0.8
+	bloom.Size = 28
+	bloom.Threshold = 1
+
+	local dof = getOrCreateEffect("DepthOfFieldEffect", "SOS_DepthOfField")
+	dof.Enabled = LightingState.Toggles.DepthOfField
+	dof.FarIntensity = 0.12
+	dof.FocusDistance = 55
+	dof.InFocusRadius = 40
+	dof.NearIntensity = 0.25
+
+	local blur = getOrCreateEffect("BlurEffect", "SOS_MotionBlur")
+	blur.Enabled = LightingState.Toggles.MotionBlur
+	blur.Size = 2
+
+	local rays = getOrCreateEffect("SunRaysEffect", "SOS_SunRays")
+	rays.Enabled = LightingState.Toggles.SunRays
+	rays.Intensity = 0.06
+	rays.Spread = 0.75
+
+	local atm = getOrCreateEffect("Atmosphere", "SOS_Atmosphere")
+	if LightingState.Toggles.Atmosphere then
+		setAtmosphereOn(atm)
+	else
+		setAtmosphereOn(atm)
+		setAtmosphereOff(atm)
+	end
+end
+
 local function removeSOSLightingOnly()
 	for _, name in ipairs({
 		"SOS_Sky",
@@ -1282,92 +1313,8 @@ local function removeSOSLightingOnly()
 		"SOS_MotionBlur",
 		"SOS_SunRays",
 	}) do
-		destroyIfExists(name)
-	end
-end
-
-local function applySkyPreset(name)
-	LightingState.SelectedSky = name
-	writeLightingSaveState()
-
-	if not LightingState.Enabled then return end
-	local preset = SKY_PRESETS[name]
-	if not preset then return end
-
-	applyFancyDefaults()
-
-	if LightingState.Toggles.Sky then
-		local sky = getOrCreateEffect("Sky", "SOS_Sky")
-		sky.SkyboxBk = preset.Sky.Bk
-		sky.SkyboxDn = preset.Sky.Dn
-		sky.SkyboxFt = preset.Sky.Ft
-		sky.SkyboxLf = preset.Sky.Lf
-		sky.SkyboxRt = preset.Sky.Rt
-		sky.SkyboxUp = preset.Sky.Up
-	else
-		destroyIfExists("SOS_Sky")
-	end
-
-	if LightingState.Toggles.ColorCorrection then
-		local cc = getOrCreateEffect("ColorCorrectionEffect", "SOS_ColorCorrection")
-		cc.Enabled = true
-		cc.Brightness = 0.02
-		cc.Contrast = 0.18
-		cc.Saturation = 0.06
-		cc.TintColor = Color3.fromRGB(255, 240, 240)
-	else
-		destroyIfExists("SOS_ColorCorrection")
-	end
-
-	if LightingState.Toggles.Bloom then
-		local bloom = getOrCreateEffect("BloomEffect", "SOS_Bloom")
-		bloom.Enabled = true
-		bloom.Intensity = 0.8
-		bloom.Size = 28
-		bloom.Threshold = 1
-	else
-		destroyIfExists("SOS_Bloom")
-	end
-
-	if LightingState.Toggles.DepthOfField then
-		local dof = getOrCreateEffect("DepthOfFieldEffect", "SOS_DepthOfField")
-		dof.Enabled = true
-		dof.FarIntensity = 0.12
-		dof.FocusDistance = 55
-		dof.InFocusRadius = 40
-		dof.NearIntensity = 0.25
-	else
-		destroyIfExists("SOS_DepthOfField")
-	end
-
-	if LightingState.Toggles.MotionBlur then
-		local blur = getOrCreateEffect("BlurEffect", "SOS_MotionBlur")
-		blur.Enabled = true
-		blur.Size = 2
-	else
-		destroyIfExists("SOS_MotionBlur")
-	end
-
-	if LightingState.Toggles.SunRays then
-		local rays = getOrCreateEffect("SunRaysEffect", "SOS_SunRays")
-		rays.Enabled = true
-		rays.Intensity = 0.06
-		rays.Spread = 0.75
-	else
-		destroyIfExists("SOS_SunRays")
-	end
-
-	-- Atmosphere has no .Enabled, so we toggle by creating/destroying it
-	if LightingState.Toggles.Atmosphere then
-		local atm = getOrCreateEffect("Atmosphere", "SOS_Atmosphere")
-		atm.Density = 0.32
-		atm.Offset = 0.1
-		atm.Color = Color3.fromRGB(210, 200, 255)
-		atm.Decay = Color3.fromRGB(70, 60, 90)
-		atm.Glare = 0.12
-		atm.Haze = 1
-	else
-		destroyIfExists("SOS_Atmosphere")
+		local inst = Lighting:FindFirstChild(name)
+		if inst then inst:Destroy() end
 	end
 end
 
@@ -1402,7 +1349,7 @@ local function resetLightingToOriginal()
 	restoreClone(ORIGINAL_LIGHTING.Bloom, "BloomEffect")
 	restoreClone(ORIGINAL_LIGHTING.ColorCorrection, "ColorCorrectionEffect")
 	restoreClone(ORIGINAL_LIGHTING.DepthOfField, "DepthOfFieldEffect")
-	restoreClone(ORIGINAL_LIGHTING.Blur, "BlurEffect")
+	restoreClone(ORIGINAL_LIGHTING.MotionBlur, "BlurEffect")
 	restoreClone(ORIGINAL_LIGHTING.SunRays, "SunRaysEffect")
 
 	LightingState.SelectedSky = nil
@@ -1415,48 +1362,89 @@ local function syncLightingToggles()
 		return
 	end
 
-	if LightingState.SelectedSky and SKY_PRESETS[LightingState.SelectedSky] then
+	local sky = Lighting:FindFirstChild("SOS_Sky")
+	if sky and sky:IsA("Sky") then
+		if not LightingState.Toggles.Sky then
+			sky:Destroy()
+		end
+	end
+
+	for name, className in pairs({
+		SOS_Bloom = "BloomEffect",
+		SOS_ColorCorrection = "ColorCorrectionEffect",
+		SOS_DepthOfField = "DepthOfFieldEffect",
+		SOS_MotionBlur = "BlurEffect",
+		SOS_SunRays = "SunRaysEffect",
+	}) do
+		local inst = Lighting:FindFirstChild(name)
+		if inst and inst.ClassName == className then
+			local key = name:gsub("^SOS_", "")
+			if LightingState.Toggles[key] ~= nil then
+				inst.Enabled = LightingState.Toggles[key]
+			end
+		end
+	end
+
+	do
+		local atm = Lighting:FindFirstChild("SOS_Atmosphere")
+		if atm and atm:IsA("Atmosphere") then
+			if LightingState.Toggles.Atmosphere then
+				setAtmosphereOn(atm)
+			else
+				setAtmosphereOff(atm)
+			end
+		end
+	end
+
+	if LightingState.SelectedSky then
 		applySkyPreset(LightingState.SelectedSky)
-	else
-		-- Even if no sky chosen, keep toggles consistent
-		if not LightingState.Toggles.Sky then destroyIfExists("SOS_Sky") end
-		if not LightingState.Toggles.Atmosphere then destroyIfExists("SOS_Atmosphere") end
-		if not LightingState.Toggles.ColorCorrection then destroyIfExists("SOS_ColorCorrection") end
-		if not LightingState.Toggles.Bloom then destroyIfExists("SOS_Bloom") end
-		if not LightingState.Toggles.DepthOfField then destroyIfExists("SOS_DepthOfField") end
-		if not LightingState.Toggles.MotionBlur then destroyIfExists("SOS_MotionBlur") end
-		if not LightingState.Toggles.SunRays then destroyIfExists("SOS_SunRays") end
 	end
 end
 
 --------------------------------------------------------------------
--- CAMERA APPLY
+-- CAMERA APPLY (Shift Lock safe)
 --------------------------------------------------------------------
-local function resolveCameraSubject(mode)
-	if not character then return nil end
+local function getAttachOffset(mode)
+	if not character or not humanoid then return Vector3.new(0, 0, 0) end
 	if mode == "Humanoid" then
-		return humanoid
+		return Vector3.new(0, 0, 0)
 	end
+
+	local head = character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return Vector3.new(0, 0, 0)
+	end
+
+	local part = nil
 	if mode == "Head" then
-		return character:FindFirstChild("Head") or humanoid
+		part = head
+	elseif mode == "HumanoidRootPart" then
+		part = character:FindFirstChild("HumanoidRootPart")
+	elseif mode == "Torso" then
+		part = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+	elseif mode == "UpperTorso" then
+		part = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	elseif mode == "LowerTorso" then
+		part = character:FindFirstChild("LowerTorso")
 	end
-	if mode == "HumanoidRootPart" then
-		return character:FindFirstChild("HumanoidRootPart") or humanoid
+
+	if not part or not part:IsA("BasePart") then
+		return Vector3.new(0, 0, 0)
 	end
-	if mode == "Torso" then
-		return character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or humanoid
+
+	local worldDelta = (part.Position - head.Position)
+	if rootPart and rootPart:IsA("BasePart") then
+		return rootPart.CFrame:VectorToObjectSpace(worldDelta)
 	end
-	if mode == "UpperTorso" then
-		return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or humanoid
-	end
-	if mode == "LowerTorso" then
-		return character:FindFirstChild("LowerTorso") or humanoid
-	end
-	return humanoid
+	return worldDelta
 end
 
 local function applyCameraSettings()
 	if not camera then return end
+	if not humanoid then return end
+
+	camera.CameraType = Enum.CameraType.Custom
+	camera.CameraSubject = humanoid
 
 	LocalPlayer.CameraMaxZoomDistance = camMaxZoom or INFINITE_ZOOM
 	LocalPlayer.CameraMinZoomDistance = DEFAULT_CAM_MIN_ZOOM or 0.5
@@ -1465,14 +1453,8 @@ local function applyCameraSettings()
 		camera.FieldOfView = camFov
 	end
 
-	local subject = resolveCameraSubject(camSubjectMode)
-	if subject then
-		camera.CameraSubject = subject
-	end
-
-	if humanoid then
-		humanoid.CameraOffset = camOffset
-	end
+	local attachOffset = getAttachOffset(camAttachMode)
+	humanoid.CameraOffset = camOffset + attachOffset
 end
 
 local function resetCameraToDefaults()
@@ -1488,7 +1470,7 @@ local function resetCameraToDefaults()
 	camMaxZoom = INFINITE_ZOOM
 	LocalPlayer.CameraMaxZoomDistance = camMaxZoom
 
-	camSubjectMode = DEFAULT_CAMERA_SUBJECT_MODE
+	camAttachMode = "Humanoid"
 	camOffset = Vector3.new(0, 0, 0)
 	if humanoid then
 		humanoid.CameraOffset = camOffset
@@ -1519,64 +1501,379 @@ local function resetPlayerSpeedToDefault()
 end
 
 --------------------------------------------------------------------
--- MIC UP VIP TOOL
+-- START SOUND
 --------------------------------------------------------------------
-local function ownsAnyVipPass()
-	for _, id in ipairs(VIP_GAMEPASSES) do
-		local ok, owned = pcall(function()
-			return MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, id)
-		end)
-		if ok and owned then
-			return true
-		end
-	end
-	return false
+local function playStartSound()
+	if not gui then return end
+	local s = Instance.new("Sound")
+	s.Name = "SOS_StartSound"
+	s.SoundId = INTRO_SOUND_ID
+	s.Volume = 0.9
+	s.Looped = false
+	s.Parent = gui
+	pcall(function() s:Play() end)
+	Debris:AddItem(s, 8)
 end
 
-local function giveBetterSpeedCoil()
-	if not character or not humanoid then
-		notify("Better Speed Coil", "Character not ready.", 2)
-		return
+--------------------------------------------------------------------
+-- SOS TAG SYSTEM (integrated)
+--------------------------------------------------------------------
+local ROLE_COLOR = {
+	Normal = Color3.fromRGB(120, 190, 235),
+	Owner  = Color3.fromRGB(255, 210, 90),
+	Tester = Color3.fromRGB(60, 255, 90),
+	Sin    = Color3.fromRGB(235, 70, 70),
+}
+
+local OwnerNames = {
+	["deniskraily"] = true,
+}
+
+local OwnerUserIds = {
+	[433636433] = true,
+	[196988708] = true,
+}
+
+local TesterUserIds = {
+	-- leave blank for now
+}
+
+local SinProfiles = {
+	[2630250935] = { SinName = "Cinna" },
+	[105995794]  = { SinName = "Lettuce" },
+	[138975737]  = { SinName = "Music" },
+	[9159968275] = { SinName = "Music" },
+	[4659279349] = { SinName = "Trial" },
+	[4495710706] = { SinName = "Games Design" },
+	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
+}
+
+local SOS_MARKER = "¬"
+local AK_MARKER_1 = "؍؍؍"
+local AK_MARKER_2 = "؍"
+
+local ScriptUsers = {}
+local AKUsers = {}
+
+local function getRole(plr)
+	if not plr then return nil end
+
+	if OwnerNames[plr.Name] or OwnerUserIds[plr.UserId] then
+		return "Owner"
+	end
+	if TesterUserIds[plr.UserId] then
+		return "Tester"
+	end
+	if SinProfiles[plr.UserId] then
+		return "Sin"
 	end
 
-	local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-	if not backpack then
-		notify("Better Speed Coil", "Backpack not found.", 2)
-		return
+	-- Normal tag if they are a known script user OR they typed the AK marker
+	if ScriptUsers[plr.UserId] or AKUsers[plr.UserId] then
+		return "Normal"
 	end
 
-	-- Prevent duplicates
-	if backpack:FindFirstChild("Better Speed Coil") or character:FindFirstChild("Better Speed Coil") then
-		notify("Better Speed Coil", "You already have it.", 2)
-		return
-	end
+	return nil
+end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "Better Speed Coil"
-	tool.RequiresHandle = false
-	tool.CanBeDropped = false
-	tool.ManualActivationOnly = true
-
-	local last = nil
-	tool.Equipped:Connect(function()
-		if humanoid then
-			last = humanoid.WalkSpeed
-			humanoid.WalkSpeed = 111
+local function getRoleColor(plr, role)
+	if role == "Sin" then
+		local prof = SinProfiles[plr.UserId]
+		if prof and prof.Color then
+			return prof.Color
 		end
+	end
+	return ROLE_COLOR[role]
+end
+
+local function getTopLine(plr, role)
+	if role == "Owner" then
+		return "Owner"
+	end
+	if role == "Tester" then
+		return "SOS Tester"
+	end
+	if role == "Sin" then
+		local prof = SinProfiles[plr.UserId]
+		if prof and prof.SinName and #prof.SinName > 0 then
+			return "The Sin of " .. prof.SinName
+		end
+		return "The Sin of ???"
+	end
+	return "SOS User"
+end
+
+local function teleportToPlayer(plr)
+	if not plr or plr == LocalPlayer then return end
+	local myChar = LocalPlayer.Character
+	local theirChar = plr.Character
+	if not myChar or not theirChar then return end
+
+	local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+	local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP or not theirHRP then return end
+
+	myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, 3)
+end
+
+local function destroyExistingTag(char)
+	if not char then return end
+	local old = char:FindFirstChild("SOS_UserTag")
+	if old then
+		old:Destroy()
+	end
+end
+
+local function createTagForPlayer(plr)
+	if not plr then return end
+	local role = getRole(plr)
+	if not role then
+		if plr.Character then
+			destroyExistingTag(plr.Character)
+		end
+		return
+	end
+
+	local char = plr.Character
+	if not char then return end
+
+	local head = char:FindFirstChild("Head")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local adornee = (head and head:IsA("BasePart")) and head or ((hrp and hrp:IsA("BasePart")) and hrp or nil)
+	if not adornee then return end
+
+	destroyExistingTag(char)
+
+	local color = getRoleColor(plr, role)
+	if not color then return end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "SOS_UserTag"
+	bb.Adornee = adornee
+	bb.AlwaysOnTop = true
+	bb.Size = UDim2.new(0, 205, 0, 52)
+	bb.StudsOffset = Vector3.new(0, 3.25, 0)
+	bb.Parent = char
+
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 0, 1, 0)
+	shadow.Position = UDim2.new(0, 2, 0, 2)
+	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	shadow.BackgroundTransparency = 0.55
+	shadow.BorderSizePixel = 0
+	shadow.Parent = bb
+	makeCorner(shadow, 10)
+
+	local btn = Instance.new("TextButton")
+	btn.Name = "ClickArea"
+	btn.Size = UDim2.new(1, 0, 1, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	btn.BackgroundTransparency = 0.22
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.AutoButtonColor = true
+	btn.Parent = bb
+	makeCorner(btn, 10)
+
+	local grad = Instance.new("UIGradient")
+	grad.Rotation = 90
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 24, 30)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
+	})
+	grad.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = 2
+	stroke.Transparency = 0.05
+	stroke.Parent = btn
+
+	local topRow = Instance.new("Frame")
+	topRow.Name = "TopRow"
+	topRow.BackgroundTransparency = 1
+	topRow.Size = UDim2.new(1, -10, 0, 22)
+	topRow.Position = UDim2.new(0, 5, 0, 4)
+	topRow.Parent = btn
+
+	local topLayout = Instance.new("UIListLayout")
+	topLayout.FillDirection = Enum.FillDirection.Horizontal
+	topLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	topLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	topLayout.Padding = UDim.new(0, 6)
+	topLayout.Parent = topRow
+
+	local top = Instance.new("TextLabel")
+	top.BackgroundTransparency = 1
+	top.Size = UDim2.new(0, 140, 1, 0)
+	top.Font = Enum.Font.GothamBold
+	top.TextSize = 15
+	top.TextColor3 = color
+	top.TextXAlignment = Enum.TextXAlignment.Center
+	top.Text = getTopLine(plr, role)
+	top.Parent = topRow
+
+	local ak = Instance.new("TextLabel")
+	ak.Name = "AK"
+	ak.BackgroundTransparency = 1
+	ak.Size = UDim2.new(0, 26, 1, 0)
+	ak.Font = Enum.Font.GothamBlack
+	ak.TextSize = 13
+	ak.TextColor3 = Color3.fromRGB(255, 60, 60)
+	ak.TextXAlignment = Enum.TextXAlignment.Center
+	ak.Text = "AK"
+	ak.Visible = (AKUsers[plr.UserId] == true)
+	ak.Parent = topRow
+
+	local akStroke = Instance.new("UIStroke")
+	akStroke.Color = Color3.fromRGB(0, 0, 0)
+	akStroke.Transparency = 0.35
+	akStroke.Thickness = 1
+	akStroke.Parent = ak
+
+	local bottom = Instance.new("TextLabel")
+	bottom.BackgroundTransparency = 1
+	bottom.Size = UDim2.new(1, -10, 0, 22)
+	bottom.Position = UDim2.new(0, 5, 0, 26)
+	bottom.Font = Enum.Font.Gotham
+	bottom.TextSize = 13
+	bottom.TextColor3 = Color3.fromRGB(230, 230, 230)
+	bottom.TextXAlignment = Enum.TextXAlignment.Center
+	bottom.Text = plr.Name
+	bottom.Parent = btn
+
+	btn.Activated:Connect(function()
+		teleportToPlayer(plr)
+	end)
+end
+
+local function refreshTag(plr)
+	if not plr then return end
+	if plr.Character then
+		createTagForPlayer(plr)
+	end
+end
+
+local function hookPlayerForTags(plr)
+	if not plr then return end
+	plr.CharacterAdded:Connect(function()
+		task.wait(0.2)
+		refreshTag(plr)
 	end)
 
-	tool.Unequipped:Connect(function()
-		if humanoid then
-			if last then
-				humanoid.WalkSpeed = last
-			else
-				humanoid.WalkSpeed = humanoid.WalkSpeed
+	if plr.Character then
+		task.wait(0.2)
+		refreshTag(plr)
+	end
+end
+
+local function onMarkerSeen(userId)
+	if typeof(userId) ~= "number" then return end
+	if not ScriptUsers[userId] then
+		ScriptUsers[userId] = true
+	end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.UserId == userId then
+			refreshTag(plr)
+			break
+		end
+	end
+end
+
+local function onAKSeen(userId)
+	if typeof(userId) ~= "number" then return end
+
+	-- AK should work for anyone, so:
+	-- 1) Mark them as AK user
+	-- 2) Also force them into ScriptUsers so they get a tag even if they never sent the SOS marker
+	if not AKUsers[userId] then
+		AKUsers[userId] = true
+	end
+	if not ScriptUsers[userId] then
+		ScriptUsers[userId] = true
+	end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.UserId == userId then
+			refreshTag(plr)
+			break
+		end
+	end
+end
+
+local function broadcastMarker()
+	onMarkerSeen(LocalPlayer.UserId)
+
+	pcall(function()
+		if TextChatService and TextChatService.TextChannels then
+			local general = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+			if general and general.SendAsync then
+				general:SendAsync(SOS_MARKER)
+				return
 			end
 		end
 	end)
 
-	tool.Parent = backpack
-	notify("Better Speed Coil", "Added to your inventory.", 2)
+	pcall(function()
+		local events = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if events then
+			local say = events:FindFirstChild("SayMessageRequest")
+			if say and say.FireServer then
+				say:FireServer(SOS_MARKER, "All")
+			end
+		end
+	end)
+end
+
+local function hookChatListeners()
+	if TextChatService and TextChatService.MessageReceived then
+		TextChatService.MessageReceived:Connect(function(msg)
+			if not msg then return end
+			local text = msg.Text or ""
+			local src = msg.TextSource
+
+			if text == SOS_MARKER then
+				if src and src.UserId then
+					onMarkerSeen(src.UserId)
+				end
+				return
+			end
+
+			if text == AK_MARKER_1 or text == AK_MARKER_2 then
+				if src and src.UserId then
+					onAKSeen(src.UserId)
+				end
+				return
+			end
+		end)
+	end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		pcall(function()
+			plr.Chatted:Connect(function(message)
+				if message == SOS_MARKER then
+					onMarkerSeen(plr.UserId)
+				elseif message == AK_MARKER_1 or message == AK_MARKER_2 then
+					onAKSeen(plr.UserId)
+				end
+			end)
+		end)
+	end
+
+	Players.PlayerAdded:Connect(function(plr)
+		pcall(function()
+			plr.Chatted:Connect(function(message)
+				if message == SOS_MARKER then
+					onMarkerSeen(plr.UserId)
+				elseif message == AK_MARKER_1 or message == AK_MARKER_2 then
+					onAKSeen(plr.UserId)
+				end
+			end)
+		end)
+	end)
 end
 
 --------------------------------------------------------------------
@@ -1595,8 +1892,7 @@ local function createUI()
 	ensureClickSoundTemplate()
 	setupGlobalButtonSounds(gui)
 
-	-- Intro sound only
-	playIntroSoundOnly()
+	playStartSound()
 
 	-- FPS label
 	fpsLabel = Instance.new("TextLabel")
@@ -1749,10 +2045,10 @@ local function createUI()
 		header.Size = UDim2.new(1, 0, 0, 22)
 
 		local msg = makeText(infoScroll,
-			"Welcome.\n\nDiscord:\nPress to copy, or it will open if copy isn't supported.\n",
+			"Discord:\nPress to copy, or it will open if copy isn't supported.\n\nSOS Tag System:\nA marker is broadcast once when you load.\nIf someone else also runs this HUD, they will get an SOS tag.\nIf they type ؍؍؍ or ؍, they get a mini red AK next to the tag.\nTyping AK marker also forces a tag to appear.\nClick a tag to teleport.\n",
 			14, false
 		)
-		msg.Size = UDim2.new(1, 0, 0, 90)
+		msg.Size = UDim2.new(1, 0, 0, 185)
 
 		local row = Instance.new("Frame")
 		row.BackgroundTransparency = 1
@@ -1799,10 +2095,10 @@ local function createUI()
 		header.Size = UDim2.new(1, 0, 0, 22)
 
 		local info = makeText(controlsScroll,
-			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Menu Toggle: " .. menuToggleKey.Name .. "\n- Move: WASD + Q/E\n\nMobile:\n- Use the Fly button (bottom-right)\n- Use the top arrow to open/close the menu",
+			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Menu Toggle: " .. menuToggleKey.Name .. "\n- Move: WASD + Q/E\n\nMobile:\n- Use the Fly button (bottom-right)\n- Use the top arrow to open/close the menu\n\nSOS Tag:\n- Click a tag to teleport\n- Type ؍؍؍ or ؍ for AK next to your tag",
 			14, false
 		)
-		info.Size = UDim2.new(1, 0, 0, 130)
+		info.Size = UDim2.new(1, 0, 0, 190)
 
 		local bindRow = Instance.new("Frame")
 		bindRow.BackgroundTransparency = 1
@@ -1846,6 +2142,18 @@ local function createUI()
 
 		makeBindLine("Flight Toggle Key:", function() return flightToggleKey end, function(k) flightToggleKey = k end)
 		makeBindLine("Menu Toggle Key:", function() return menuToggleKey end, function(k) menuToggleKey = k end)
+
+		local tagRow = Instance.new("Frame")
+		tagRow.BackgroundTransparency = 1
+		tagRow.Size = UDim2.new(1, 0, 0, 44)
+		tagRow.Parent = controlsScroll
+
+		local tagBtn = makeButton(tagRow, "Broadcast SOS Marker")
+		tagBtn.Size = UDim2.new(0, 240, 0, 36)
+		tagBtn.MouseButton1Click:Connect(function()
+			broadcastMarker()
+			notify("SOS Tag", "Marker broadcasted.", 2)
+		end)
 	end
 
 	----------------------------------------------------------------
@@ -1855,16 +2163,12 @@ local function createUI()
 		local header = makeText(flyScroll, "Flight Emotes", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
 
-		local keyLegend = makeText(flyScroll, "A = Apply    R = Reset", 13, true)
-		keyLegend.Size = UDim2.new(1, 0, 0, 18)
-		keyLegend.TextColor3 = Color3.fromRGB(220, 220, 220)
-
 		local warning = makeText(flyScroll,
-			"Animation IDs for flight must be a Published Marketplace/Catalog EMOTE assetid from the Creator Store.\n(If you paste random IDs, it can fail.)\n(copy and paste id in the link of the creator store version or the chosen Emote (Wont Work With Normal Marketplace ID))",
+			"Animation IDs for flight must be a Published Creator Store EMOTE assetid.\nIf you paste random IDs, it can fail.",
 			13, false
 		)
 		warning.TextColor3 = Color3.fromRGB(220, 220, 220)
-		warning.Size = UDim2.new(1, 0, 0, 92)
+		warning.Size = UDim2.new(1, 0, 0, 58)
 
 		local function makeIdRow(labelText, getFn, setFn, resetFn)
 			local row = Instance.new("Frame")
@@ -1880,12 +2184,12 @@ local function createUI()
 			box.Position = UDim2.new(0, 130, 0, 4)
 			box.Text = getFn()
 
-			local applyBtn = makeButton(row, "A")
+			local applyBtn = makeButton(row, "Apply")
 			applyBtn.Size = UDim2.new(0, 70, 0, 36)
 			applyBtn.AnchorPoint = Vector2.new(1, 0)
 			applyBtn.Position = UDim2.new(1, -90, 0, 4)
 
-			local resetBtn = makeButton(row, "R")
+			local resetBtn = makeButton(row, "Reset")
 			resetBtn.Size = UDim2.new(0, 70, 0, 36)
 			resetBtn.AnchorPoint = Vector2.new(1, 0)
 			resetBtn.Position = UDim2.new(1, -10, 0, 4)
@@ -1956,6 +2260,11 @@ local function createUI()
 		knob.Parent = sliderBg
 		makeCorner(knob, 999)
 
+		local resetBtn = makeButton(speedRow, "Reset")
+		resetBtn.Size = UDim2.new(0, 100, 0, 34)
+		resetBtn.AnchorPoint = Vector2.new(1, 0)
+		resetBtn.Position = UDim2.new(1, 0, 0, 42)
+
 		local function setSpeedFromAlpha(a)
 			a = clamp01(a)
 			local s = minFlySpeed + (maxFlySpeed - minFlySpeed) * a
@@ -1966,7 +2275,12 @@ local function createUI()
 			scheduleSave()
 		end
 
-		setSpeedFromAlpha((flySpeed - minFlySpeed) / (maxFlySpeed - minFlySpeed))
+		local function alphaFromSpeed(s)
+			s = math.clamp(s, minFlySpeed, maxFlySpeed)
+			return (s - minFlySpeed) / (maxFlySpeed - minFlySpeed)
+		end
+
+		setSpeedFromAlpha(alphaFromSpeed(flySpeed))
 
 		local dragging = false
 		sliderBg.InputBegan:Connect(function(i)
@@ -1984,6 +2298,12 @@ local function createUI()
 			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
 			local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
 			setSpeedFromAlpha(a)
+		end)
+
+		resetBtn.MouseButton1Click:Connect(function()
+			flySpeed = 200
+			setSpeedFromAlpha(alphaFromSpeed(flySpeed))
+			notify("Fly", "Fly speed reset.", 2)
 		end)
 	end
 
@@ -2056,13 +2376,6 @@ local function createUI()
 		listLayout.Padding = UDim.new(0, 10)
 		listLayout.Parent = animListContainer
 
-		local function animateListPop()
-			animListContainer.Position = UDim2.new(0, 26, 0, 0)
-			tween(animListContainer, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Position = UDim2.new(0, 0, 0, 0)
-			})
-		end
-
 		local stateButtons = {}
 		local categoryButtons = {}
 
@@ -2078,7 +2391,6 @@ local function createUI()
 				if #names == 0 then
 					local t = makeText(animListContainer, "No Custom animations for: " .. lastChosenState, 14, true)
 					t.Size = UDim2.new(1, 0, 0, 28)
-					animateListPop()
 					return
 				end
 
@@ -2098,8 +2410,6 @@ local function createUI()
 						end
 					end)
 				end
-
-				animateListPop()
 				return
 			end
 
@@ -2123,8 +2433,6 @@ local function createUI()
 					end
 				end)
 			end
-
-			animateListPop()
 		end
 
 		local function setState(stateName)
@@ -2266,7 +2574,7 @@ local function createUI()
 		local header = makeText(cameraScroll, "Camera", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
 
-		local sub = makeText(cameraScroll, "Choose camera subject, offset, max zoom, and FOV. Each has a reset.", 13, false)
+		local sub = makeText(cameraScroll, "Attach mode keeps Shift Lock working. Offset, zoom, and FOV have resets.", 13, false)
 		sub.Size = UDim2.new(1, 0, 0, 34)
 		sub.TextColor3 = Color3.fromRGB(210, 210, 210)
 
@@ -2292,8 +2600,8 @@ local function createUI()
 		local subjButtons = {}
 		local modes = { "Humanoid", "Head", "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso" }
 
-		local function setSubjectMode(m)
-			camSubjectMode = m
+		local function setAttachMode(m)
+			camAttachMode = m
 			for k, b in pairs(subjButtons) do
 				setTabButtonActive(b, k == m)
 			end
@@ -2306,7 +2614,7 @@ local function createUI()
 			b.Size = UDim2.new(0, 170, 0, 36)
 			subjButtons[m] = b
 			b.MouseButton1Click:Connect(function()
-				setSubjectMode(m)
+				setAttachMode(m)
 			end)
 		end
 
@@ -2406,7 +2714,7 @@ local function createUI()
 			notify("Camera", "Camera reset.", 2)
 		end)
 
-		setSubjectMode(camSubjectMode)
+		setAttachMode(camAttachMode)
 		applyCameraSettings()
 	end
 
@@ -2495,7 +2803,7 @@ local function createUI()
 			row.Parent = lightingScroll
 
 			local btn = makeButton(row, "")
-			btn.Size = UDim2.new(0, 220, 0, 36)
+			btn.Size = UDim2.new(0, 180, 0, 36)
 			btn.Position = UDim2.new(0, 0, 0, 2)
 
 			local function refresh()
@@ -2530,28 +2838,14 @@ local function createUI()
 	end
 
 	----------------------------------------------------------------
-	-- MIC UP TAB
+	-- MIC UP TAB (conditional)
 	----------------------------------------------------------------
 	if micupScroll then
 		local header = makeText(micupScroll, "Mic up", 16, true)
 		header.Size = UDim2.new(1, 0, 0, 22)
 
-		local msg = makeText(micupScroll,
-			"For those of you who play this game hopefully your not a P£D0 also dont be weird and enjoy this tab\n(Some Stuff Will Be Added Soon)",
-			14, false
-		)
-		msg.Size = UDim2.new(1, 0, 0, 120)
-
-		local coilBtn = makeButton(micupScroll, "Better Speed Coil")
-		coilBtn.Size = UDim2.new(0, 220, 0, 40)
-
-		coilBtn.MouseButton1Click:Connect(function()
-			if ownsAnyVipPass() then
-				giveBetterSpeedCoil()
-			else
-				notify("VIP Required", "You need VIP First.", 3)
-			end
-		end)
+		local msg = makeText(micupScroll, "(Some stuff will be added soon)", 14, false)
+		msg.Size = UDim2.new(1, 0, 0, 80)
 	end
 
 	----------------------------------------------------------------
@@ -2642,7 +2936,7 @@ local function createUI()
 	end
 
 	----------------------------------------------------------------
-	-- CLIENT TAB (placeholder)
+	-- CLIENT TAB
 	----------------------------------------------------------------
 	do
 		local t = makeText(clientScroll, "Controls\n(Coming soon)", 14, true)
@@ -2716,14 +3010,21 @@ local function createUI()
 	setTabButtonActive(tabButtons["Info"], true)
 
 	----------------------------------------------------------------
-	-- Menu toggle (arrow), starts CLOSED and reliable
+	-- Menu toggle
 	----------------------------------------------------------------
 	menuOpen = false
 	menuFrame.Visible = false
 	arrowButton.Text = "˄"
 
 	local openPos = menuFrame.Position
-	local closedPos = UDim2.new(openPos.X.Scale, openPos.X.Offset, openPos.Y.Scale, openPos.Y.Offset - (menuFrame.Size.Y.Offset + 10))
+
+	local function getClosedPos()
+		local h = menuFrame.AbsoluteSize.Y
+		if h and h > 0 then
+			return UDim2.new(openPos.X.Scale, openPos.X.Offset, openPos.Y.Scale, openPos.Y.Offset - (h + 10))
+		end
+		return UDim2.new(openPos.X.Scale, openPos.X.Offset, openPos.Y.Scale, openPos.Y.Offset - (menuFrame.Size.Y.Offset + 10))
+	end
 
 	local function setMenu(open, instant)
 		menuOpen = open
@@ -2733,6 +3034,8 @@ local function createUI()
 			pcall(function() menuTween:Cancel() end)
 			menuTween = nil
 		end
+
+		local closedPos = getClosedPos()
 
 		if instant then
 			menuFrame.Visible = open
@@ -2769,7 +3072,7 @@ local function createUI()
 	setMenu(false, true)
 
 	----------------------------------------------------------------
-	-- Mobile Fly button (only on mobile)
+	-- Mobile Fly button
 	----------------------------------------------------------------
 	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	if isMobile then
@@ -2800,7 +3103,9 @@ UserInputService.InputBegan:Connect(function(input, gp)
 		if flying then stopFlying() else startFlying() end
 	elseif input.KeyCode == menuToggleKey then
 		if arrowButton then
-			arrowButton:Activate()
+			pcall(function()
+				arrowButton:Activate()
+			end)
 		end
 	end
 end)
@@ -2882,7 +3187,6 @@ RunService.RenderStepped:Connect(function(dt)
 		tiltDeg = IDLE_TILT_DEG
 	end
 
-	-- Q/E special tilt when only vertical
 	if not hasHorizontal and verticalInput < 0 then
 		tiltDeg = 90
 	elseif not hasHorizontal and verticalInput > 0 then
@@ -2935,6 +3239,25 @@ end)
 --------------------------------------------------------------------
 loadSettings()
 getCharacter()
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	hookPlayerForTags(plr)
+end
+Players.PlayerAdded:Connect(function(plr)
+	hookPlayerForTags(plr)
+end)
+Players.PlayerRemoving:Connect(function(plr)
+	if plr and plr.Character then
+		destroyExistingTag(plr.Character)
+	end
+end)
+
+hookChatListeners()
+
+task.defer(function()
+	broadcastMarker()
+end)
+
 createUI()
 applyPlayerSpeed()
 applyCameraSettings()
@@ -2949,6 +3272,10 @@ LocalPlayer.CharacterAdded:Connect(function()
 	applyCameraSettings()
 	reapplyAllOverridesAfterRespawn()
 	syncLightingToggles()
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		refreshTag(plr)
+	end
 
 	if flying then
 		stopFlying()
