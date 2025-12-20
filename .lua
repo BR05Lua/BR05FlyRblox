@@ -1,49 +1,26 @@
 --[[
 	SOS HUD
-	Single LocalScript (StarterPlayerScripts recommended)
+	Single LocalScript
+	Put this LocalScript in StarterPlayerScripts so it auto loads every time you join
 
-	This build includes:
-	- Shift Lock safe camera attach modes (CameraSubject always Humanoid)
-	- SOS tags and role tags
-	- AK and Fake AK indicators as separate systems (same detection pipe)
-	- Tags are 30 percent smaller, centered text, clickable actions:
-		Normal click: teleport behind them by 5 studs
-		Hold LeftCtrl (or RightCtrl) then click: show account age and extra stats
-	- Owner tag: says "SOS Owner" and is the only one with glitch styling (neon yellow text, dark black glass)
+	This build:
+	- SOS marker is ¬ (only this means SOS)
+	- AK marker is ؍؍؍ or ؍ (AK is independent and does NOT make someone an SOS user)
+	- KSK marker is ,,κžκåçţíѷåţíѷåţȇđ,, (independent)
+	- Tags are independent but still share the same chat listener system
+	- Separate BillboardGui per tag type:
+		1) SOS role tag (Owner, Sin, Tester, SOS User) only appears if they used SOS marker (¬), except Owners always show
+		2) AK tag is a small circle with "AK"
+		3) KSK tag is a small circle with "KSK"
+	- Clicking tags:
+		- Normal click teleports you behind them by 5 studs
+		- Hold LeftCtrl then click shows a small stats popup for that player
+	- All tag text is centered
+	- Tags are about 30 percent smaller
+	- Owner tag is glitchy neon yellow text with dark black glass background
 
-	Small British note: if this breaks, it was definitely lag. Not your fault. Probably.
+	(No remote events added by this script beyond Roblox default chat systems)
 ]]
-local queue_on_teleport = syn and syn.queue_on_teleport or queue_on_teleport
-
-if queue_on_teleport then
-    local TeleportCheck = false
-    game:GetService("Players").LocalPlayer.OnTeleport:Connect(function(State)
-        if not TeleportCheck then
-            TeleportCheck = true
-            queue_on_teleport([[
-
-                loadstring(game:HttpGet("link"))()
-            ]])
-        end
-    end)
-    
-    if syn and syn.is_in_teleport then
-        queue_on_teleport([[
-            -- Same script as above
-            loadstring(game:HttpGet("link"))()
-        ]])
-    end
-else
-    warn("Your exploit doesn't support queue_on_teleport")
-end
---------------------------------------------------------------------
--- EARLY LOAD YIELD (join safe)
---------------------------------------------------------------------
-if not game:IsLoaded() then
-	pcall(function()
-		game.Loaded:Wait()
-	end)
-end
 
 --------------------------------------------------------------------
 -- SERVICES
@@ -106,7 +83,6 @@ local DISCORD_LINK = "https://discord.gg/cacg7kvX"
 
 -- Sounds
 local INTRO_SOUND_ID = "rbxassetid://1843492223"
-
 local BUTTON_CLICK_SOUND_ID = "rbxassetid://111174530730534"
 local BUTTON_CLICK_VOLUME = 0.6
 
@@ -641,7 +617,7 @@ local function getCharacter()
 end
 
 --------------------------------------------------------------------
--- ANIMATE OVERRIDES (Anim Packs)
+-- ANIMATE OVERRIDES
 --------------------------------------------------------------------
 local function getAnimateScript()
 	if not character then return nil end
@@ -716,191 +692,6 @@ local function reapplyAllOverridesAfterRespawn()
 			applyStateOverrideToAnimate(stateName, asset)
 		end
 	end
-end
-
---------------------------------------------------------------------
--- ANIMATION PACK LIST (Roblox Anims / Unreleased)
---------------------------------------------------------------------
-local AnimationPacks = {
-	Vampire = { Idle1=1083445855, Idle2=1083450166, Walk=1083473930, Run=1083462077, Jump=1083455352, Climb=1083439238, Fall=1083443587 },
-	Hero = { Idle1=616111295, Idle2=616113536, Walk=616122287, Run=616117076, Jump=616115533, Climb=616104706, Fall=616108001 },
-	ZombieClassic = { Idle1=616158929, Idle2=616160636, Walk=616168032, Run=616163682, Jump=616161997, Climb=616156119, Fall=616157476 },
-	Mage = { Idle1=707742142, Idle2=707855907, Walk=707897309, Run=707861613, Jump=707853694, Climb=707826056, Fall=707829716 },
-	Ghost = { Idle1=616006778, Idle2=616008087, Walk=616010382, Run=616013216, Jump=616008936, Climb=616003713, Fall=616005863 },
-	Elder = { Idle1=845397899, Idle2=845400520, Walk=845403856, Run=845386501, Jump=845398858, Climb=845392038, Fall=845396048 },
-	Levitation = { Idle1=616006778, Idle2=616008087, Walk=616013216, Run=616010382, Jump=616008936, Climb=616003713, Fall=616005863 },
-	Astronaut = { Idle1=891621366, Idle2=891633237, Walk=891667138, Run=891636393, Jump=891627522, Climb=891609353, Fall=891617961 },
-	Ninja = { Idle1=656117400, Idle2=656118341, Walk=656121766, Run=656118852, Jump=656117878, Climb=656114359, Fall=656115606 },
-	Werewolf = { Idle1=1083195517, Idle2=1083214717, Walk=1083178339, Run=1083216690, Jump=1083218792, Climb=1083182000, Fall=1083189019 },
-	Cartoon = { Idle1=742637544, Idle2=742638445, Walk=742640026, Run=742638842, Jump=742637942, Climb=742636889, Fall=742637151 },
-	Pirate = { Idle1=750781874, Idle2=750782770, Walk=750785693, Run=750783738, Jump=750782230, Climb=750779899, Fall=750780242 },
-	Sneaky = { Idle1=1132473842, Idle2=1132477671, Walk=1132510133, Run=1132494274, Jump=1132489853, Climb=1132461372, Fall=1132469004 },
-	Toy = { Idle1=782841498, Idle2=782845736, Walk=782843345, Run=782842708, Jump=782847020, Climb=782843869, Fall=782846423 },
-	Knight = { Idle1=657595757, Idle2=657568135, Walk=657552124, Run=657564596, Jump=658409194, Climb=658360781, Fall=657600338 },
-	Confident = { Idle1=1069977950, Idle2=1069987858, Walk=1070017263, Run=1070001516, Jump=1069984524, Climb=1069946257, Fall=1069973677 },
-	Popstar = { Idle1=1212900985, Idle2=1212900985, Walk=1212980338, Run=1212980348, Jump=1212954642, Climb=1213044953, Fall=1212900995 },
-	Princess = { Idle1=941003647, Idle2=941013098, Walk=941028902, Run=941015281, Jump=941008832, Climb=940996062, Fall=941000007 },
-	Cowboy = { Idle1=1014390418, Idle2=1014398616, Walk=1014421541, Run=1014401683, Jump=1014394726, Climb=1014380606, Fall=1014384571 },
-	Patrol = { Idle1=1149612882, Idle2=1150842221, Walk=1151231493, Run=1150967949, Jump=1150944216, Climb=1148811837, Fall=1148863382 },
-	ZombieFE = { Idle1=3489171152, Idle2=3489171152, Walk=3489174223, Run=3489173414, Jump=616161997, Climb=616156119, Fall=616157476 },
-}
-
-local UnreleasedNames = {
-	"Cowboy",
-	"Princess",
-	"ZombieFE",
-	"Confident",
-	"Ghost",
-	"Patrol",
-	"Popstar",
-	"Sneaky",
-}
-
-local function isInUnreleased(name)
-	for _, n in ipairs(UnreleasedNames) do
-		if n == name then return true end
-	end
-	return false
-end
-
---------------------------------------------------------------------
--- CUSTOM ANIMS (Custom tab)
---------------------------------------------------------------------
-local CustomIdle = {
-	["Tall"] = 91348372558295,
-
-	["Jonathan"] = 120629563851640,
-	["Killer Queen"] = 104714163485875,
-	["Dio"] = 138467089338692,
-	["Dio OH"] = 96658788627102,
-	["Joseph"] = 87470625500564,
-	["Jolyne"] = 97892708412696,
-	["Diego"] = 127117233320016,
-	["Polnareff"] = 104647713661701,
-	["Jotaro"] = 134878791451155,
-	["Funny V"] = 88859285630202,
-	["Johnny"] = 77834689346843,
-	["Made in Heaven"] = 79234770032233,
-	["Mahito"] = 92585001378279,
-	["Honored One"] = 139000839803032,
-	["Gon Rage"] = 136678571910037,
-	["Sol's RNG 1"] = 125722696765151,
-	["Luffy"] = 107520488394848,
-	["Sans"] = 123627677663418,
-	["Fake R6"] = 96518514398708,
-	["Goku Warm Up"] = 84773442399798,
-	["Goku UI/Mui"] = 130104867308995,
-	["Goku Black"] = 110240143520283,
-	["Sukuna"] = 82974857632552,
-	["Toji"] = 113657065279101,
-	["Isagi"] = 135818607077529,
-	["Yuji"] = 103088653217891,
-	["Lavinho"] = 92045987196732,
-	["Ippo"] = 76110924880592,
-	["Aizen"] = 83896268225208,
-	["Kaneki"] = 116671111363578,
-	["Tanjiro"] = 118533315464114,
-	["Head Hold"] = 129453036635884,
-	["Robot Perform"] = 105174189783870,
-
-	["Springtrap"] = 90257184304714,
-	["Hmmm Float"] = 107666091494733,
-	["OG Golden Freddy"] = 138402679058341,
-	["Wally West"] = 106169111259587,
-	["𝓛"] = 103267638009024,
-	["Robot Malfunction"] = 110419039625879,
-}
-
-local CustomRun = {
-	["Tall"] = 134010853417610,
-	["Officer Earl"] = 104646820775114,
-	["AOT Titan"] = 95363958550738,
-	["Captain JS"] = 87806542116815,
-	["Ninja Sprint"] = 123763532572423,
-	["IDEK"] = 101293881003047,
-	["Honored One"] = 82260970223217,
-	["Head Hold"] = 92715775326925,
-
-	["Robot Speed 3"] = 128047975332475,
-
-	["Springtrap Sturdy"] = 80927378599036,
-	["UFO"] = 118703314621593,
-	["Closed Eyes Vibe"] = 117991470645633,
-	["Wally West"] = 102622695004986,
-	["Squidward"] = 82365330773489,
-	["On A Mission"] = 113718116290824,
-	["Very Happy Run"] = 86522070222739,
-	["Missile"] = 92401041987431,
-	["I Wanna Run Away"] = 78510387198062,
-}
-
-local CustomWalk = {
-	["Football/Soccer"] = 116881956670910,
-	["Animal"] = 87721497492370,
-	["Fredbear"] = 133284420439423,
-	["Cute Anime"] = 106767496454996,
-}
-
-local function listCustomNamesForState(stateName)
-	local t = {}
-	local src = nil
-	if stateName == "Idle" then src = CustomIdle end
-	if stateName == "Run" then src = CustomRun end
-	if stateName == "Walk" then src = CustomWalk end
-	if not src then return t end
-	for name, _ in pairs(src) do
-		table.insert(t, name)
-	end
-	table.sort(t)
-	return t
-end
-
-local function getCustomIdForState(name, stateName)
-	if stateName == "Idle" then return CustomIdle[name] end
-	if stateName == "Run" then return CustomRun[name] end
-	if stateName == "Walk" then return CustomWalk[name] end
-	return nil
-end
-
---------------------------------------------------------------------
--- ROBLOX/UNRELEASED LIST HELPERS
---------------------------------------------------------------------
-local function listPackNamesForCategory(category)
-	local names = {}
-	for name, _ in pairs(AnimationPacks) do
-		if category == "Unreleased" then
-			if isInUnreleased(name) then
-				table.insert(names, name)
-			end
-		elseif category == "Roblox Anims" then
-			if not isInUnreleased(name) then
-				table.insert(names, name)
-			end
-		end
-	end
-	table.sort(names)
-	return names
-end
-
-local function getPackValueForState(packName, stateName)
-	local pack = AnimationPacks[packName]
-	if not pack then return nil end
-	if stateName == "Idle" then
-		return pack.Idle1 or pack.Idle2
-	elseif stateName == "Walk" then
-		return pack.Walk
-	elseif stateName == "Run" then
-		return pack.Run
-	elseif stateName == "Jump" then
-		return pack.Jump
-	elseif stateName == "Climb" then
-		return pack.Climb
-	elseif stateName == "Fall" then
-		return pack.Fall
-	elseif stateName == "Swim" then
-		return nil
-	end
-	return nil
 end
 
 --------------------------------------------------------------------
@@ -1109,333 +900,6 @@ local function setTabButtonActive(btn, active)
 end
 
 --------------------------------------------------------------------
--- LIGHTING SYSTEM (safe toggles)
---------------------------------------------------------------------
-local ORIGINAL_LIGHTING = {
-	Ambient = Lighting.Ambient,
-	OutdoorAmbient = Lighting.OutdoorAmbient,
-	Brightness = Lighting.Brightness,
-	ClockTime = Lighting.ClockTime,
-	ExposureCompensation = Lighting.ExposureCompensation,
-	EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
-	EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
-	FogColor = Lighting.FogColor,
-	FogEnd = Lighting.FogEnd,
-	FogStart = Lighting.FogStart,
-	GeographicLatitude = Lighting.GeographicLatitude,
-}
-
-local function cloneIfExists(className)
-	for _, inst in ipairs(Lighting:GetChildren()) do
-		if inst.ClassName == className then
-			return inst:Clone()
-		end
-	end
-	return nil
-end
-
-ORIGINAL_LIGHTING.Sky = cloneIfExists("Sky")
-ORIGINAL_LIGHTING.Atmosphere = cloneIfExists("Atmosphere")
-ORIGINAL_LIGHTING.Bloom = cloneIfExists("BloomEffect")
-ORIGINAL_LIGHTING.ColorCorrection = cloneIfExists("ColorCorrectionEffect")
-ORIGINAL_LIGHTING.DepthOfField = cloneIfExists("DepthOfFieldEffect")
-ORIGINAL_LIGHTING.MotionBlur = cloneIfExists("BlurEffect")
-ORIGINAL_LIGHTING.SunRays = cloneIfExists("SunRaysEffect")
-
-local function getOrCreateEffect(className, name)
-	local inst = Lighting:FindFirstChild(name)
-	if inst and inst.ClassName == className then
-		return inst
-	end
-	if inst then
-		inst:Destroy()
-	end
-	local newInst = Instance.new(className)
-	newInst.Name = name
-	newInst.Parent = Lighting
-	return newInst
-end
-
-local SKY_PRESETS = {
-	["Crimson Night"] = {
-		Sky = {
-			Bk = "rbxassetid://401664839",
-			Dn = "rbxassetid://401664862",
-			Ft = "rbxassetid://401664960",
-			Lf = "rbxassetid://401664881",
-			Rt = "rbxassetid://401664901",
-			Up = "rbxassetid://401664936",
-		},
-	},
-	["Deep Space"] = {
-		Sky = {
-			Bk = "rbxassetid://149397692",
-			Dn = "rbxassetid://149397686",
-			Ft = "rbxassetid://149397697",
-			Lf = "rbxassetid://149397684",
-			Rt = "rbxassetid://149397688",
-			Up = "rbxassetid://149397702",
-		},
-	},
-	["Vaporwave Nebula"] = {
-		Sky = {
-			Bk = "rbxassetid://1417494030",
-			Dn = "rbxassetid://1417494146",
-			Ft = "rbxassetid://1417494253",
-			Lf = "rbxassetid://1417494402",
-			Rt = "rbxassetid://1417494499",
-			Up = "rbxassetid://1417494643",
-		},
-	},
-	["Soft Clouds"] = {
-		Sky = {
-			Bk = "rbxassetid://570557514",
-			Dn = "rbxassetid://570557775",
-			Ft = "rbxassetid://570557559",
-			Lf = "rbxassetid://570557620",
-			Rt = "rbxassetid://570557672",
-			Up = "rbxassetid://570557727",
-		},
-	},
-	["Cloudy Skies"] = {
-		Sky = {
-			Bk = "rbxassetid://252760981",
-			Dn = "rbxassetid://252763035",
-			Ft = "rbxassetid://252761439",
-			Lf = "rbxassetid://252760980",
-			Rt = "rbxassetid://252760986",
-			Up = "rbxassetid://252762652",
-		},
-	},
-}
-
-local LightingState = {
-	Enabled = true,
-	SelectedSky = nil,
-	Toggles = {
-		Sky = true,
-		Atmosphere = true,
-		ColorCorrection = true,
-		Bloom = true,
-		DepthOfField = true,
-		MotionBlur = true,
-		SunRays = true,
-	},
-}
-
-local SOS_ATM_DEFAULT = {
-	Density = 0.32,
-	Offset = 0.1,
-	Color = Color3.fromRGB(210, 200, 255),
-	Decay = Color3.fromRGB(70, 60, 90),
-	Glare = 0.12,
-	Haze = 1,
-}
-
-local function setAtmosphereOn(atm)
-	if not atm then return end
-	atm.Density = SOS_ATM_DEFAULT.Density
-	atm.Offset = SOS_ATM_DEFAULT.Offset
-	atm.Color = SOS_ATM_DEFAULT.Color
-	atm.Decay = SOS_ATM_DEFAULT.Decay
-	atm.Glare = SOS_ATM_DEFAULT.Glare
-	atm.Haze = SOS_ATM_DEFAULT.Haze
-end
-
-local function setAtmosphereOff(atm)
-	if not atm then return end
-	atm.Density = 0
-	atm.Glare = 0
-	atm.Haze = 0
-end
-
-local function writeLightingSaveState()
-	_G.__SOS_LightingSaveState = {
-		Enabled = LightingState.Enabled,
-		SelectedSky = LightingState.SelectedSky,
-		Toggles = LightingState.Toggles,
-	}
-	scheduleSave()
-end
-
-local function readLightingSaveState()
-	local s = _G.__SOS_LightingSaveState
-	if typeof(s) ~= "table" then return end
-	if typeof(s.Enabled) == "boolean" then LightingState.Enabled = s.Enabled end
-	if typeof(s.SelectedSky) == "string" then LightingState.SelectedSky = s.SelectedSky end
-	if typeof(s.Toggles) == "table" then
-		for k, v in pairs(s.Toggles) do
-			if typeof(v) == "boolean" and LightingState.Toggles[k] ~= nil then
-				LightingState.Toggles[k] = v
-			end
-		end
-	end
-end
-
-local function applyFancyDefaults()
-	Lighting.Brightness = 2
-	Lighting.EnvironmentDiffuseScale = 1
-	Lighting.EnvironmentSpecularScale = 1
-	Lighting.ExposureCompensation = 0.15
-end
-
-local function applySkyPreset(name)
-	LightingState.SelectedSky = name
-	writeLightingSaveState()
-
-	if not LightingState.Enabled then return end
-
-	local preset = SKY_PRESETS[name]
-	if not preset then return end
-
-	if LightingState.Toggles.Sky then
-		local sky = getOrCreateEffect("Sky", "SOS_Sky")
-		sky.SkyboxBk = preset.Sky.Bk
-		sky.SkyboxDn = preset.Sky.Dn
-		sky.SkyboxFt = preset.Sky.Ft
-		sky.SkyboxLf = preset.Sky.Lf
-		sky.SkyboxRt = preset.Sky.Rt
-		sky.SkyboxUp = preset.Sky.Up
-	end
-
-	applyFancyDefaults()
-
-	local cc = getOrCreateEffect("ColorCorrectionEffect", "SOS_ColorCorrection")
-	cc.Enabled = LightingState.Toggles.ColorCorrection
-	cc.Brightness = 0.02
-	cc.Contrast = 0.18
-	cc.Saturation = 0.06
-	cc.TintColor = Color3.fromRGB(255, 240, 240)
-
-	local bloom = getOrCreateEffect("BloomEffect", "SOS_Bloom")
-	bloom.Enabled = LightingState.Toggles.Bloom
-	bloom.Intensity = 0.8
-	bloom.Size = 28
-	bloom.Threshold = 1
-
-	local dof = getOrCreateEffect("DepthOfFieldEffect", "SOS_DepthOfField")
-	dof.Enabled = LightingState.Toggles.DepthOfField
-	dof.FarIntensity = 0.12
-	dof.FocusDistance = 55
-	dof.InFocusRadius = 40
-	dof.NearIntensity = 0.25
-
-	local blur = getOrCreateEffect("BlurEffect", "SOS_MotionBlur")
-	blur.Enabled = LightingState.Toggles.MotionBlur
-	blur.Size = 2
-
-	local rays = getOrCreateEffect("SunRaysEffect", "SOS_SunRays")
-	rays.Enabled = LightingState.Toggles.SunRays
-	rays.Intensity = 0.06
-	rays.Spread = 0.75
-
-	local atm = getOrCreateEffect("Atmosphere", "SOS_Atmosphere")
-	if LightingState.Toggles.Atmosphere then
-		setAtmosphereOn(atm)
-	else
-		setAtmosphereOff(atm)
-	end
-end
-
-local function removeSOSLightingOnly()
-	for _, name in ipairs({
-		"SOS_Sky",
-		"SOS_Atmosphere",
-		"SOS_Bloom",
-		"SOS_ColorCorrection",
-		"SOS_DepthOfField",
-		"SOS_MotionBlur",
-		"SOS_SunRays",
-	}) do
-		local inst = Lighting:FindFirstChild(name)
-		if inst then inst:Destroy() end
-	end
-end
-
-local function resetLightingToOriginal()
-	removeSOSLightingOnly()
-
-	Lighting.Ambient = ORIGINAL_LIGHTING.Ambient
-	Lighting.OutdoorAmbient = ORIGINAL_LIGHTING.OutdoorAmbient
-	Lighting.Brightness = ORIGINAL_LIGHTING.Brightness
-	Lighting.ClockTime = ORIGINAL_LIGHTING.ClockTime
-	Lighting.ExposureCompensation = ORIGINAL_LIGHTING.ExposureCompensation
-	Lighting.EnvironmentDiffuseScale = ORIGINAL_LIGHTING.EnvironmentDiffuseScale
-	Lighting.EnvironmentSpecularScale = ORIGINAL_LIGHTING.EnvironmentSpecularScale
-	Lighting.FogColor = ORIGINAL_LIGHTING.FogColor
-	Lighting.FogEnd = ORIGINAL_LIGHTING.FogEnd
-	Lighting.FogStart = ORIGINAL_LIGHTING.FogStart
-	Lighting.GeographicLatitude = ORIGINAL_LIGHTING.GeographicLatitude
-
-	local function restoreClone(cloneObj, className)
-		if not cloneObj then return end
-		for _, inst in ipairs(Lighting:GetChildren()) do
-			if inst.ClassName == className then
-				inst:Destroy()
-			end
-		end
-		local c = cloneObj:Clone()
-		c.Parent = Lighting
-	end
-
-	restoreClone(ORIGINAL_LIGHTING.Sky, "Sky")
-	restoreClone(ORIGINAL_LIGHTING.Atmosphere, "Atmosphere")
-	restoreClone(ORIGINAL_LIGHTING.Bloom, "BloomEffect")
-	restoreClone(ORIGINAL_LIGHTING.ColorCorrection, "ColorCorrectionEffect")
-	restoreClone(ORIGINAL_LIGHTING.DepthOfField, "DepthOfFieldEffect")
-	restoreClone(ORIGINAL_LIGHTING.MotionBlur, "BlurEffect")
-	restoreClone(ORIGINAL_LIGHTING.SunRays, "SunRaysEffect")
-
-	LightingState.SelectedSky = nil
-	writeLightingSaveState()
-end
-
-local function syncLightingToggles()
-	if not LightingState.Enabled then
-		removeSOSLightingOnly()
-		return
-	end
-
-	local sky = Lighting:FindFirstChild("SOS_Sky")
-	if sky and sky:IsA("Sky") then
-		if not LightingState.Toggles.Sky then
-			sky:Destroy()
-		end
-	end
-
-	for name, className in pairs({
-		SOS_Bloom = "BloomEffect",
-		SOS_ColorCorrection = "ColorCorrectionEffect",
-		SOS_DepthOfField = "DepthOfFieldEffect",
-		SOS_MotionBlur = "BlurEffect",
-		SOS_SunRays = "SunRaysEffect",
-	}) do
-		local inst = Lighting:FindFirstChild(name)
-		if inst and inst.ClassName == className then
-			local key = name:gsub("^SOS_", "")
-			if LightingState.Toggles[key] ~= nil then
-				inst.Enabled = LightingState.Toggles[key]
-			end
-		end
-	end
-
-	do
-		local atm = Lighting:FindFirstChild("SOS_Atmosphere")
-		if atm and atm:IsA("Atmosphere") then
-			if LightingState.Toggles.Atmosphere then
-				setAtmosphereOn(atm)
-			else
-				setAtmosphereOff(atm)
-			end
-		end
-	end
-
-	if LightingState.SelectedSky then
-		applySkyPreset(LightingState.SelectedSky)
-	end
-end
-
---------------------------------------------------------------------
 -- CAMERA APPLY (Shift Lock safe)
 --------------------------------------------------------------------
 local function getAttachOffset(mode)
@@ -1491,47 +955,10 @@ local function applyCameraSettings()
 	humanoid.CameraOffset = camOffset + attachOffset
 end
 
-local function resetCameraToDefaults()
-	if DEFAULT_FOV and camera then
-		camFov = DEFAULT_FOV
-		camera.FieldOfView = DEFAULT_FOV
-	end
-
-	if DEFAULT_CAM_MIN_ZOOM ~= nil then
-		LocalPlayer.CameraMinZoomDistance = DEFAULT_CAM_MIN_ZOOM
-	end
-
-	camMaxZoom = INFINITE_ZOOM
-	LocalPlayer.CameraMaxZoomDistance = camMaxZoom
-
-	camAttachMode = "Humanoid"
-	camOffset = Vector3.new(0, 0, 0)
-	if humanoid then
-		humanoid.CameraOffset = camOffset
-	end
-
-	applyCameraSettings()
-	scheduleSave()
-end
-
---------------------------------------------------------------------
--- PLAYER SPEED APPLY
---------------------------------------------------------------------
 local function applyPlayerSpeed()
 	if humanoid and playerSpeed then
 		humanoid.WalkSpeed = playerSpeed
 	end
-end
-
-local function resetPlayerSpeedToDefault()
-	if humanoid then
-		if DEFAULT_WALKSPEED == nil then
-			DEFAULT_WALKSPEED = humanoid.WalkSpeed
-		end
-		playerSpeed = DEFAULT_WALKSPEED
-		humanoid.WalkSpeed = DEFAULT_WALKSPEED
-	end
-	scheduleSave()
 end
 
 --------------------------------------------------------------------
@@ -1550,15 +977,11 @@ local function playStartSound()
 end
 
 --------------------------------------------------------------------
--- SOS TAG SYSTEM (integrated)
--- Separate signals:
---   SOS marker (¬) indicates "SOS script user" (enables role tags like Sin)
---   AK marker (؍؍؍ or ؍) indicates AK indicator badge
---   Fake AK marker indicates Fake AK indicator badge
+-- TAG SYSTEM (SOS, AK, KSK) - independent
 --------------------------------------------------------------------
 local ROLE_COLOR = {
 	Normal = Color3.fromRGB(120, 190, 235),
-	Owner  = Color3.fromRGB(255, 240, 80), -- neon yellow vibe
+	Owner  = Color3.fromRGB(255, 255, 80),
 	Tester = Color3.fromRGB(60, 255, 90),
 	Sin    = Color3.fromRGB(235, 70, 70),
 }
@@ -1589,44 +1012,50 @@ local SinProfiles = {
 local SOS_MARKER = "𖺗"
 local AK_MARKER_1 = "؍؍؍"
 local AK_MARKER_2 = "؍"
-local FAKE_AK_MARKER = ",,κžκåçţíѷåţȇđ,,"
+local KSK_MARKER = ",,κžκåçţíѷåţíѷåţȇđ,,"
 
--- Independent state tables
-local SOSUsers = {}
-local AKUsers = {}
-local FakeAKUsers = {}
+-- independent sets
+local SosUsers = {}
+local AkUsers = {}
+local KskUsers = {}
 
-local function hasCtrlHeld()
-	return UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+-- tag sizing (about 30 percent smaller than old)
+local TAG_W, TAG_H = 144, 36
+local TAG_OFFSET_Y = 2.6
+
+local ORB_SIZE = 18
+local ORB_OFFSET_Y = 3.35
+
+-- quick stats popup
+local statsPopup
+local statsPopupLabel
+local statsPopupClose
+
+local function isOwner(plr)
+	return (OwnerNames[plr.Name] == true) or (OwnerUserIds[plr.UserId] == true)
 end
 
-local function getRole(plr)
+local function getSosRole(plr)
 	if not plr then return nil end
-	local uid = plr.UserId
 
-	local hasSOS = (SOSUsers[uid] == true)
-	local hasAnyBadge = (AKUsers[uid] == true) or (FakeAKUsers[uid] == true)
+	-- owners always have their SOS role tag
+	if isOwner(plr) then
+		return "Owner"
+	end
 
-	-- Only show any tag if they have SOS or at least one badge
-	if not hasSOS and not hasAnyBadge then
+	-- SOS role tags only appear if they used SOS marker
+	if not SosUsers[plr.UserId] then
 		return nil
 	end
 
-	-- Roles only apply when SOS marker is used
-	if hasSOS then
-		if OwnerNames[plr.Name] or OwnerUserIds[uid] then
-			return "Owner"
-		end
-		if TesterUserIds[uid] then
-			return "Tester"
-		end
-		if SinProfiles[uid] then
-			return "Sin"
-		end
-		return "Normal"
+	if TesterUserIds[plr.UserId] then
+		return "Tester"
 	end
 
-	-- If they only used AK or Fake AK, never give Sin or Owner etc
+	if SinProfiles[plr.UserId] then
+		return "Sin"
+	end
+
 	return "Normal"
 end
 
@@ -1636,6 +1065,9 @@ local function getRoleColor(plr, role)
 		if prof and prof.Color then
 			return prof.Color
 		end
+	end
+	if role == "Owner" then
+		return ROLE_COLOR.Owner
 	end
 	return ROLE_COLOR[role]
 end
@@ -1657,7 +1089,7 @@ local function getTopLine(plr, role)
 	return "SOS User"
 end
 
-local function teleportBehindPlayer(plr)
+local function teleportBehind(plr, studsBack)
 	if not plr or plr == LocalPlayer then return end
 	local myChar = LocalPlayer.Character
 	local theirChar = plr.Character
@@ -1667,192 +1099,152 @@ local function teleportBehindPlayer(plr)
 	local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
 	if not myHRP or not theirHRP then return end
 
-	local behind = -theirHRP.CFrame.LookVector
-	if behind.Magnitude < 0.01 then behind = Vector3.new(0, 0, 1) end
-	local targetPos = theirHRP.Position + (behind.Unit * 5) + Vector3.new(0, 0.25, 0)
-	myHRP.CFrame = CFrame.new(targetPos, theirHRP.Position)
+	local back = studsBack or 5
+	myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, back)
 end
 
-local function showAccountStats(plr)
-	if not plr then return end
-
-	local age = plr.AccountAge or 0
-	local teamName = (plr.Team and plr.Team.Name) or "None"
-	local displayName = plr.DisplayName or plr.Name
-
-	local posText = "N/A"
-	local hpText = "N/A"
-	local wsText = "N/A"
-	pcall(function()
-		local c = plr.Character
-		if c then
-			local h = c:FindFirstChildOfClass("Humanoid")
-			local hrp = c:FindFirstChild("HumanoidRootPart")
-			if h then
-				hpText = string.format("%.0f / %.0f", h.Health, h.MaxHealth)
-				wsText = tostring(h.WalkSpeed)
-			end
-			if hrp then
-				local p = hrp.Position
-				posText = string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z)
-			end
-		end
-	end)
-
-	local txt =
-		"Name: " .. plr.Name .. "\n" ..
-		"Display: " .. displayName .. "\n" ..
-		"UserId: " .. tostring(plr.UserId) .. "\n" ..
-		"AccountAge: " .. tostring(age) .. " days\n" ..
-		"Team: " .. teamName .. "\n" ..
-		"Health: " .. hpText .. "\n" ..
-		"WalkSpeed: " .. wsText .. "\n" ..
-		"Position: " .. posText
-
-	notify("Account Stats", txt, 7)
-end
-
-local function destroyExistingTag(char)
+local function destroyTagGui(char, name)
 	if not char then return end
-	local old = char:FindFirstChild("SOS_UserTag")
+	local old = char:FindFirstChild(name)
 	if old then
 		old:Destroy()
 	end
 end
 
-local function createBadge(parent, text, fillColor, strokeColor)
-	local badge = Instance.new("Frame")
-	badge.Name = "Badge_" .. text
-	badge.Size = UDim2.new(0, 18, 0, 18)
-	badge.BackgroundColor3 = fillColor
-	badge.BackgroundTransparency = 0.18
-	badge.BorderSizePixel = 0
-	badge.Parent = parent
-	makeCorner(badge, 999)
+local function ensureStatsPopup()
+	if statsPopup and statsPopup.Parent then return end
+	if not gui then return end
 
-	local st = Instance.new("UIStroke")
-	st.Color = strokeColor
-	st.Thickness = 1
-	st.Transparency = 0.05
-	st.Parent = badge
+	statsPopup = Instance.new("Frame")
+	statsPopup.Name = "SOS_StatsPopup"
+	statsPopup.AnchorPoint = Vector2.new(0.5, 0.5)
+	statsPopup.Position = UDim2.new(0.5, 0, 0.5, 0)
+	statsPopup.Size = UDim2.new(0, 380, 0, 170)
+	statsPopup.BorderSizePixel = 0
+	statsPopup.Visible = false
+	statsPopup.Parent = gui
+	makeCorner(statsPopup, 14)
+	makeGlass(statsPopup)
+	makeStroke(statsPopup, 2)
 
-	local lbl = Instance.new("TextLabel")
-	lbl.BackgroundTransparency = 1
-	lbl.Size = UDim2.new(1, 0, 1, 0)
-	lbl.Font = Enum.Font.GothamBlack
-	lbl.TextSize = 10
-	lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-	lbl.TextXAlignment = Enum.TextXAlignment.Center
-	lbl.TextYAlignment = Enum.TextYAlignment.Center
-	lbl.Text = text
-	lbl.Parent = badge
+	statsPopupLabel = Instance.new("TextLabel")
+	statsPopupLabel.BackgroundTransparency = 1
+	statsPopupLabel.Size = UDim2.new(1, -18, 1, -54)
+	statsPopupLabel.Position = UDim2.new(0, 9, 0, 10)
+	statsPopupLabel.Font = Enum.Font.Gotham
+	statsPopupLabel.TextSize = 14
+	statsPopupLabel.TextColor3 = Color3.fromRGB(245, 245, 245)
+	statsPopupLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statsPopupLabel.TextYAlignment = Enum.TextYAlignment.Top
+	statsPopupLabel.TextWrapped = true
+	statsPopupLabel.Text = ""
+	statsPopupLabel.Parent = statsPopup
 
-	return badge
+	statsPopupClose = makeButton(statsPopup, "Close")
+	statsPopupClose.AnchorPoint = Vector2.new(0.5, 1)
+	statsPopupClose.Position = UDim2.new(0.5, 0, 1, -10)
+	statsPopupClose.Size = UDim2.new(0, 140, 0, 34)
+	statsPopupClose.MouseButton1Click:Connect(function()
+		statsPopup.Visible = false
+	end)
 end
 
-local function applyOwnerGlitch(topLabel)
-	if not topLabel then return end
+local function showPlayerStats(plr)
+	ensureStatsPopup()
+	if not statsPopup then return end
 
-	local ghost = Instance.new("TextLabel")
-	ghost.Name = "GlitchGhost"
-	ghost.BackgroundTransparency = 1
-	ghost.Size = topLabel.Size
-	ghost.Position = topLabel.Position
-	ghost.Font = topLabel.Font
-	ghost.TextSize = topLabel.TextSize
-	ghost.TextXAlignment = topLabel.TextXAlignment
-	ghost.TextYAlignment = topLabel.TextYAlignment
-	ghost.Text = topLabel.Text
-	ghost.TextColor3 = Color3.fromRGB(0, 0, 0)
-	ghost.TextTransparency = 0.65
-	ghost.ZIndex = topLabel.ZIndex + 1
-	ghost.Parent = topLabel.Parent
-
-	local running = true
-	topLabel.AncestryChanged:Connect(function(_, p)
-		if not p then
-			running = false
-		end
+	local ageDays = 0
+	pcall(function()
+		ageDays = plr.AccountAge or 0
 	end)
+
+	local role = getSosRole(plr)
+	local roleLine = role and (getTopLine(plr, role)) or "No SOS role tag"
+	local akLine = AkUsers[plr.UserId] and "AK: Yes" or "AK: No"
+	local kskLine = KskUsers[plr.UserId] and "KSK: Yes" or "KSK: No"
+
+	local txt = ""
+	txt = txt .. "User: " .. plr.Name .. "\n"
+	txt = txt .. "UserId: " .. tostring(plr.UserId) .. "\n"
+	txt = txt .. "AccountAge: " .. tostring(ageDays) .. " days\n\n"
+	txt = txt .. "SOS Role: " .. roleLine .. "\n"
+	txt = txt .. akLine .. "\n"
+	txt = txt .. kskLine .. "\n"
+
+	statsPopupLabel.Text = txt
+	statsPopup.Visible = true
+end
+
+local function createOwnerGlitch(label)
+	if not label then return end
+
+	local base = label.Text
+	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	local rng = Random.new()
 
 	task.spawn(function()
-		local base = topLabel.Text
-		local glitchChars = { "▓", "▒", "░", "#", "@", "%", "&", "*", "!" }
-		local t = 0
-		while running do
-			task.wait(0.06)
-			t = t + 1
+		while label and label.Parent do
+			task.wait(rng:NextNumber(0.08, 0.14))
 
-			if not topLabel.Parent then break end
-
-			-- subtle jitter
-			local jx = math.random(-1, 1)
-			local jy = math.random(-1, 1)
-			ghost.Position = UDim2.new(topLabel.Position.X.Scale, topLabel.Position.X.Offset + jx, topLabel.Position.Y.Scale, topLabel.Position.Y.Offset + jy)
-
-			-- occasionally scramble 1 char
-			if (t % 6) == 0 then
-				local s = base
-				local idx = math.random(1, #s)
-				local rep = glitchChars[math.random(1, #glitchChars)]
-				local newText = s:sub(1, idx - 1) .. rep .. s:sub(idx + 1)
-				ghost.Text = newText
-				ghost.TextTransparency = 0.55
-				task.delay(0.08, function()
-					if ghost and ghost.Parent then
-						ghost.Text = base
-						ghost.TextTransparency = 0.70
+			if not label.Parent then break end
+			if rng:NextNumber() < 0.55 then
+				local out = {}
+				for i = 1, #base do
+					if rng:NextNumber() < 0.22 then
+						local idx = rng:NextInteger(1, #chars)
+						table.insert(out, chars:sub(idx, idx))
+					else
+						table.insert(out, base:sub(i, i))
 					end
-				end)
+				end
+				label.Text = table.concat(out)
 			else
-				ghost.Text = base
-				ghost.TextTransparency = 0.72
+				label.Text = base
 			end
+
+			label.TextTransparency = (rng:NextNumber() < 0.12) and 0.15 or 0
 		end
 	end)
 end
 
-local function createTagForPlayer(plr)
-	if not plr then return end
-	local role = getRole(plr)
-	if not role then
-		if plr.Character then
-			destroyExistingTag(plr.Character)
+local function makeTagButtonCommon(btn, plr)
+	btn.Activated:Connect(function()
+		local holdingCtrl = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+		if holdingCtrl then
+			showPlayerStats(plr)
+		else
+			teleportBehind(plr, 5)
 		end
-		return
-	end
+	end)
+end
 
+local function createSosRoleTag(plr)
+	if not plr then return end
 	local char = plr.Character
 	if not char then return end
+
+	local role = getSosRole(plr)
+	if not role then
+		destroyTagGui(char, "SOS_RoleTag")
+		return
+	end
 
 	local head = char:FindFirstChild("Head")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	local adornee = (head and head:IsA("BasePart")) and head or ((hrp and hrp:IsA("BasePart")) and hrp or nil)
 	if not adornee then return end
 
-	destroyExistingTag(char)
+	destroyTagGui(char, "SOS_RoleTag")
 
-	local color = getRoleColor(plr, role)
-	if not color then return end
+	local color = getRoleColor(plr, role) or Color3.fromRGB(240, 240, 240)
 
-	-- 30 percent smaller than old (old: 205 x 52)
 	local bb = Instance.new("BillboardGui")
-	bb.Name = "SOS_UserTag"
+	bb.Name = "SOS_RoleTag"
 	bb.Adornee = adornee
 	bb.AlwaysOnTop = true
-	bb.Size = UDim2.new(0, 144, 0, 36)
-	bb.StudsOffset = Vector3.new(0, 2.75, 0)
+	bb.Size = UDim2.new(0, TAG_W, 0, TAG_H)
+	bb.StudsOffset = Vector3.new(0, TAG_OFFSET_Y, 0)
 	bb.Parent = char
-
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(1, 0, 1, 0)
-	shadow.Position = UDim2.new(0, 2, 0, 2)
-	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	shadow.BackgroundTransparency = 0.55
-	shadow.BorderSizePixel = 0
-	shadow.Parent = bb
-	makeCorner(shadow, 10)
 
 	local btn = Instance.new("TextButton")
 	btn.Name = "ClickArea"
@@ -1863,245 +1255,286 @@ local function createTagForPlayer(plr)
 	btn.Parent = bb
 	makeCorner(btn, 10)
 
-	local isOwner = (role == "Owner")
-	if isOwner then
-		btn.BackgroundColor3 = Color3.fromRGB(6, 6, 8)
-		btn.BackgroundTransparency = 0.10
+	-- Owner special styling
+	if role == "Owner" then
+		btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		btn.BackgroundTransparency = 0.12
+
+		local grad = Instance.new("UIGradient")
+		grad.Rotation = 90
+		grad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 12)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
+		})
+		grad.Parent = btn
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.Thickness = 2
+		stroke.Transparency = 0.15
+		stroke.Parent = btn
 	else
 		btn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
 		btn.BackgroundTransparency = 0.22
-	end
 
-	local grad = Instance.new("UIGradient")
-	grad.Rotation = 90
-	if isOwner then
-		grad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(12, 12, 16)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(2, 2, 3)),
-		})
-	else
+		local grad = Instance.new("UIGradient")
+		grad.Rotation = 90
 		grad.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 24, 30)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
 		})
-	end
-	grad.Parent = btn
+		grad.Parent = btn
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = isOwner and Color3.fromRGB(255, 245, 90) or color
-	stroke.Thickness = 2
-	stroke.Transparency = isOwner and 0.00 or 0.05
-	stroke.Parent = btn
-
-	-- Badge container (above the tag)
-	local badgeRow = Instance.new("Frame")
-	badgeRow.Name = "BadgeRow"
-	badgeRow.BackgroundTransparency = 1
-	badgeRow.Size = UDim2.new(1, 0, 0, 18)
-	badgeRow.Position = UDim2.new(0, 0, 0, -14)
-	badgeRow.Parent = btn
-
-	local badgeLayout = Instance.new("UIListLayout")
-	badgeLayout.FillDirection = Enum.FillDirection.Horizontal
-	badgeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	badgeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	badgeLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	badgeLayout.Padding = UDim.new(0, 6)
-	badgeLayout.Parent = badgeRow
-
-	if AKUsers[plr.UserId] == true then
-		createBadge(badgeRow, "AK", Color3.fromRGB(255, 70, 70), Color3.fromRGB(0, 0, 0))
-	end
-	if FakeAKUsers[plr.UserId] == true then
-		createBadge(badgeRow, "FAK", Color3.fromRGB(60, 140, 255), Color3.fromRGB(0, 0, 0))
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = color
+		stroke.Thickness = 2
+		stroke.Transparency = 0.05
+		stroke.Parent = btn
 	end
 
-	-- Top line (centered)
 	local top = Instance.new("TextLabel")
 	top.BackgroundTransparency = 1
-	top.Size = UDim2.new(1, -8, 0, 16)
-	top.Position = UDim2.new(0, 4, 0, 3)
+	top.Size = UDim2.new(1, -10, 0, 18)
+	top.Position = UDim2.new(0, 5, 0, 3)
 	top.Font = Enum.Font.GothamBold
-	top.TextSize = 12
+	top.TextSize = 13
 	top.TextXAlignment = Enum.TextXAlignment.Center
 	top.TextYAlignment = Enum.TextYAlignment.Center
-	top.TextWrapped = true
 	top.Text = getTopLine(plr, role)
 	top.Parent = btn
 
-	if isOwner then
-		top.TextColor3 = Color3.fromRGB(255, 245, 90)
-		local topStroke = Instance.new("UIStroke")
-		topStroke.Color = Color3.fromRGB(0, 0, 0)
-		topStroke.Transparency = 0.25
-		topStroke.Thickness = 1
-		topStroke.Parent = top
-
-		applyOwnerGlitch(top)
+	if role == "Owner" then
+		top.TextColor3 = Color3.fromRGB(255, 255, 80)
+		local st = Instance.new("UIStroke")
+		st.Color = Color3.fromRGB(0, 0, 0)
+		st.Transparency = 0.35
+		st.Thickness = 1
+		st.Parent = top
+		createOwnerGlitch(top)
 	else
 		top.TextColor3 = color
 	end
 
-	-- Bottom name (centered)
 	local bottom = Instance.new("TextLabel")
 	bottom.BackgroundTransparency = 1
-	bottom.Size = UDim2.new(1, -8, 0, 16)
-	bottom.Position = UDim2.new(0, 4, 0, 18)
+	bottom.Size = UDim2.new(1, -10, 0, 16)
+	bottom.Position = UDim2.new(0, 5, 0, 19)
 	bottom.Font = Enum.Font.Gotham
-	bottom.TextSize = 11
+	bottom.TextSize = 12
 	bottom.TextColor3 = Color3.fromRGB(230, 230, 230)
 	bottom.TextXAlignment = Enum.TextXAlignment.Center
 	bottom.TextYAlignment = Enum.TextYAlignment.Center
 	bottom.Text = plr.Name
 	bottom.Parent = btn
 
-	btn.Activated:Connect(function()
-		if hasCtrlHeld() then
-			showAccountStats(plr)
-		else
-			teleportBehindPlayer(plr)
-		end
-	end)
+	makeTagButtonCommon(btn, plr)
 end
 
-local function refreshTag(plr)
+local function createOrbTag(plr, kind)
 	if not plr then return end
-	if plr.Character then
-		createTagForPlayer(plr)
+	local char = plr.Character
+	if not char then return end
+
+	local isOn = false
+	local orbName = ""
+	local orbText = ""
+	local orbColor = Color3.fromRGB(255, 60, 60)
+
+	if kind == "AK" then
+		isOn = (AkUsers[plr.UserId] == true)
+		orbName = "SOS_AKTag"
+		orbText = "AK"
+		orbColor = Color3.fromRGB(255, 60, 60)
+	elseif kind == "KSK" then
+		isOn = (KskUsers[plr.UserId] == true)
+		orbName = "SOS_KSKTag"
+		orbText = "KSK"
+		orbColor = Color3.fromRGB(80, 170, 255)
+	else
+		return
 	end
+
+	if not isOn then
+		destroyTagGui(char, orbName)
+		return
+	end
+
+	local head = char:FindFirstChild("Head")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local adornee = (head and head:IsA("BasePart")) and head or ((hrp and hrp:IsA("BasePart")) and hrp or nil)
+	if not adornee then return end
+
+	destroyTagGui(char, orbName)
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = orbName
+	bb.Adornee = adornee
+	bb.AlwaysOnTop = true
+	bb.Size = UDim2.new(0, ORB_SIZE, 0, ORB_SIZE)
+	bb.StudsOffset = Vector3.new(0, ORB_OFFSET_Y, 0)
+	bb.Parent = char
+
+	local btn = Instance.new("TextButton")
+	btn.Name = "ClickArea"
+	btn.Size = UDim2.new(1, 0, 1, 0)
+	btn.BorderSizePixel = 0
+	btn.Text = orbText
+	btn.AutoButtonColor = true
+	btn.Font = Enum.Font.GothamBlack
+	btn.TextSize = (kind == "KSK") and 9 or 10
+	btn.TextXAlignment = Enum.TextXAlignment.Center
+	btn.TextYAlignment = Enum.TextYAlignment.Center
+	btn.TextColor3 = orbColor
+	btn.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+	btn.BackgroundTransparency = 0.12
+	btn.Parent = bb
+	makeCorner(btn, 999)
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Transparency = 0.25
+	stroke.Thickness = 1
+	stroke.Parent = btn
+
+	makeTagButtonCommon(btn, plr)
+end
+
+local function refreshAllTagsForPlayer(plr)
+	if not plr or not plr.Character then return end
+	createSosRoleTag(plr)
+	createOrbTag(plr, "AK")
+	createOrbTag(plr, "KSK")
 end
 
 local function hookPlayerForTags(plr)
 	if not plr then return end
 	plr.CharacterAdded:Connect(function()
-		task.wait(0.12)
-		refreshTag(plr)
+		task.wait(0.1)
+		refreshAllTagsForPlayer(plr)
 	end)
-
 	if plr.Character then
-		task.wait(0.12)
-		refreshTag(plr)
+		task.wait(0.1)
+		refreshAllTagsForPlayer(plr)
 	end
 end
 
--- Marker handlers
-local function onSOSSeen(userId)
+local function onSosSeen(userId)
 	if typeof(userId) ~= "number" then return end
-	if not SOSUsers[userId] then
-		SOSUsers[userId] = true
-	end
+	SosUsers[userId] = true
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr.UserId == userId then
-			refreshTag(plr)
+			refreshAllTagsForPlayer(plr)
 			break
 		end
 	end
 end
 
-local function onAKSeen(userId)
+local function onAkSeen(userId)
 	if typeof(userId) ~= "number" then return end
-	if not AKUsers[userId] then
-		AKUsers[userId] = true
-	end
+	AkUsers[userId] = true
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr.UserId == userId then
-			refreshTag(plr)
+			refreshAllTagsForPlayer(plr)
 			break
 		end
 	end
 end
 
-local function onFakeAKSeen(userId)
+local function onKskSeen(userId)
 	if typeof(userId) ~= "number" then return end
-	if not FakeAKUsers[userId] then
-		FakeAKUsers[userId] = true
-	end
+	KskUsers[userId] = true
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr.UserId == userId then
-			refreshTag(plr)
+			refreshAllTagsForPlayer(plr)
 			break
 		end
 	end
 end
 
--- Chat send helpers (TextChatService only, no RemoteEvent fallback)
 local function trySendChat(text)
-	local sent = false
-	pcall(function()
+	-- TextChatService path
+	local ok = pcall(function()
 		if TextChatService and TextChatService.TextChannels then
 			local general = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
 			if general and general.SendAsync then
 				general:SendAsync(text)
-				sent = true
+				return true
 			end
 		end
+		return false
 	end)
-	return sent
+	if ok == true then
+		return true
+	end
+
+	-- Legacy default chat events path
+	local ok2 = pcall(function()
+		local events = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if events then
+			local say = events:FindFirstChild("SayMessageRequest")
+			if say and say.FireServer then
+				say:FireServer(text, "All")
+				return true
+			end
+		end
+		return false
+	end)
+	return ok2 == true
 end
 
-local function broadcastSOSMarker()
-	onSOSSeen(LocalPlayer.UserId)
-	local ok = trySendChat(SOS_MARKER)
-	if not ok then
-		dprint("TextChatService SendAsync not available. SOS marker only applied locally.")
-	end
+local function broadcastSosMarker()
+	onSosSeen(LocalPlayer.UserId)
+	trySendChat(SOS_MARKER)
 end
 
-local function broadcastAKMarker()
-	onAKSeen(LocalPlayer.UserId)
-	local ok = trySendChat(AK_MARKER_1)
-	if not ok then
-		dprint("TextChatService SendAsync not available. AK marker only applied locally.")
-	end
+local function broadcastAkMarker()
+	onAkSeen(LocalPlayer.UserId)
+	trySendChat(AK_MARKER_1)
 end
 
-local function broadcastFakeAKMarker()
-	onFakeAKSeen(LocalPlayer.UserId)
-	local ok = trySendChat(FAKE_AK_MARKER)
-	if not ok then
-		dprint("TextChatService SendAsync not available. Fake AK marker only applied locally.")
-	end
+local function broadcastKskMarker()
+	onKskSeen(LocalPlayer.UserId)
+	trySendChat(KSK_MARKER)
 end
 
 local function hookChatListeners()
+	-- TextChatService listener
 	if TextChatService and TextChatService.MessageReceived then
 		TextChatService.MessageReceived:Connect(function(msg)
 			if not msg then return end
 			local text = msg.Text or ""
 			local src = msg.TextSource
 
+			if not src or not src.UserId then return end
+			local uid = src.UserId
+
 			if text == SOS_MARKER then
-				if src and src.UserId then
-					onSOSSeen(src.UserId)
-				end
+				onSosSeen(uid)
 				return
 			end
 
 			if text == AK_MARKER_1 or text == AK_MARKER_2 then
-				if src and src.UserId then
-					onAKSeen(src.UserId)
-				end
+				onAkSeen(uid)
 				return
 			end
 
-			if text == FAKE_AK_MARKER then
-				if src and src.UserId then
-					onFakeAKSeen(src.UserId)
-				end
+			if text == KSK_MARKER then
+				onKskSeen(uid)
 				return
 			end
 		end)
 	end
 
+	-- Player.Chatted fallback
 	for _, plr in ipairs(Players:GetPlayers()) do
 		pcall(function()
 			plr.Chatted:Connect(function(message)
 				if message == SOS_MARKER then
-					onSOSSeen(plr.UserId)
+					onSosSeen(plr.UserId)
 				elseif message == AK_MARKER_1 or message == AK_MARKER_2 then
-					onAKSeen(plr.UserId)
-				elseif message == FAKE_AK_MARKER then
-					onFakeAKSeen(plr.UserId)
+					onAkSeen(plr.UserId)
+				elseif message == KSK_MARKER then
+					onKskSeen(plr.UserId)
 				end
 			end)
 		end)
@@ -2111,11 +1544,11 @@ local function hookChatListeners()
 		pcall(function()
 			plr.Chatted:Connect(function(message)
 				if message == SOS_MARKER then
-					onSOSSeen(plr.UserId)
+					onSosSeen(plr.UserId)
 				elseif message == AK_MARKER_1 or message == AK_MARKER_2 then
-					onAKSeen(plr.UserId)
-				elseif message == FAKE_AK_MARKER then
-					onFakeAKSeen(plr.UserId)
+					onAkSeen(plr.UserId)
+				elseif message == KSK_MARKER then
+					onKskSeen(plr.UserId)
 				end
 			end)
 		end)
@@ -2137,8 +1570,9 @@ local function createUI()
 
 	ensureClickSoundTemplate()
 	setupGlobalButtonSounds(gui)
-
 	playStartSound()
+
+	ensureStatsPopup()
 
 	-- FPS label
 	fpsLabel = Instance.new("TextLabel")
@@ -2291,10 +1725,10 @@ local function createUI()
 		header.Size = UDim2.new(1, 0, 0, 22)
 
 		local msg = makeText(infoScroll,
-			"Discord:\nPress to copy, or it will open if copy isn't supported.\n\nTags:\n- SOS marker: " .. SOS_MARKER .. " (enables role tag like Sin)\n- AK marker: " .. AK_MARKER_1 .. " or " .. AK_MARKER_2 .. " (AK badge above tag)\n- Fake AK marker: (FAK badge above tag)\n\nClick a tag:\n- Normal click teleports behind them by 5 studs\n- Hold Ctrl then click to view stats\n",
+			"Discord:\nPress to copy, or it will open if copy isn't supported.\n\nTag Markers:\nSOS is ¬\nAK is ؍؍؍ or ؍\nKSK is ,,κžκåçţíѷåţíѷåţȇđ,,\n\nTags are independent.\nClick tag to teleport behind.\nHold LeftCtrl then click for stats.\n\nIf this breaks, it was definitely not my fault. Probably ping.",
 			14, false
 		)
-		msg.Size = UDim2.new(1, 0, 0, 205)
+		msg.Size = UDim2.new(1, 0, 0, 220)
 
 		local row = Instance.new("Frame")
 		row.BackgroundTransparency = 1
@@ -2341,10 +1775,10 @@ local function createUI()
 		header.Size = UDim2.new(1, 0, 0, 22)
 
 		local info = makeText(controlsScroll,
-			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Menu Toggle: " .. menuToggleKey.Name .. "\n- Move: WASD + Q/E\n\nTags:\n- Normal click tag: teleport behind target\n- Hold Ctrl then click tag: show stats\n",
+			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Menu Toggle: " .. menuToggleKey.Name .. "\n- Move: WASD + Q/E\n\nTags:\n- Click: teleport behind\n- LeftCtrl + Click: stats popup\n\nMarkers:\n- SOS: ¬\n- AK: ؍؍؍ or ؍\n- KSK: ,,κžκåçţíѷåţíѷåţȇđ,,",
 			14, false
 		)
-		info.Size = UDim2.new(1, 0, 0, 165)
+		info.Size = UDim2.new(1, 0, 0, 220)
 
 		local bindRow = Instance.new("Frame")
 		bindRow.BackgroundTransparency = 1
@@ -2389,41 +1823,40 @@ local function createUI()
 		makeBindLine("Flight Toggle Key:", function() return flightToggleKey end, function(k) flightToggleKey = k end)
 		makeBindLine("Menu Toggle Key:", function() return menuToggleKey end, function(k) menuToggleKey = k end)
 
-		local tagRow = Instance.new("Frame")
-		tagRow.BackgroundTransparency = 1
-		tagRow.Size = UDim2.new(1, 0, 0, 94)
-		tagRow.Parent = controlsScroll
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.Size = UDim2.new(1, 0, 0, 44)
+		row.Parent = controlsScroll
 
-		local tagLay = Instance.new("UIListLayout")
-		tagLay.FillDirection = Enum.FillDirection.Horizontal
-		tagLay.Padding = UDim.new(0, 10)
-		tagLay.VerticalAlignment = Enum.VerticalAlignment.Center
-		tagLay.Parent = tagRow
+		local lay = Instance.new("UIListLayout")
+		lay.FillDirection = Enum.FillDirection.Horizontal
+		lay.Padding = UDim.new(0, 10)
+		lay.Parent = row
 
-		local sosBtn = makeButton(tagRow, "Broadcast SOS")
-		sosBtn.Size = UDim2.new(0, 160, 0, 36)
+		local sosBtn = makeButton(row, "Broadcast SOS (¬)")
+		sosBtn.Size = UDim2.new(0, 180, 0, 36)
 		sosBtn.MouseButton1Click:Connect(function()
-			broadcastSOSMarker()
-			notify("Tags", "Broadcasted SOS marker.", 2)
+			broadcastSosMarker()
+			notify("Tags", "Sent SOS marker.", 2)
 		end)
 
-		local akBtn = makeButton(tagRow, "Broadcast AK")
-		akBtn.Size = UDim2.new(0, 140, 0, 36)
+		local akBtn = makeButton(row, "Broadcast AK (؍؍؍)")
+		akBtn.Size = UDim2.new(0, 180, 0, 36)
 		akBtn.MouseButton1Click:Connect(function()
-			broadcastAKMarker()
-			notify("Tags", "Broadcasted AK marker.", 2)
+			broadcastAkMarker()
+			notify("Tags", "Sent AK marker.", 2)
 		end)
 
-		local fakBtn = makeButton(tagRow, "Broadcast Fake AK")
-		fakBtn.Size = UDim2.new(0, 190, 0, 36)
-		fakBtn.MouseButton1Click:Connect(function()
-			broadcastFakeAKMarker()
-			notify("Tags", "Broadcasted Fake AK marker.", 2)
+		local kskBtn = makeButton(row, "Broadcast KSK")
+		kskBtn.Size = UDim2.new(0, 140, 0, 36)
+		kskBtn.MouseButton1Click:Connect(function()
+			broadcastKskMarker()
+			notify("Tags", "Sent KSK marker.", 2)
 		end)
 	end
 
 	----------------------------------------------------------------
-	-- FLY TAB
+	-- FLY TAB (kept)
 	----------------------------------------------------------------
 	do
 		local header = makeText(flyScroll, "Flight Emotes", 16, true)
@@ -2491,728 +1924,14 @@ local function createUI()
 
 		makeIdRow("FLOAT_ID:", function() return FLOAT_ID end, function(v) FLOAT_ID = v end, function() FLOAT_ID = DEFAULT_FLOAT_ID end)
 		makeIdRow("FLY_ID:", function() return FLY_ID end, function(v) FLY_ID = v end, function() FLY_ID = DEFAULT_FLY_ID end)
-
-		local speedHeader = makeText(flyScroll, "Fly Speed", 16, true)
-		speedHeader.Size = UDim2.new(1, 0, 0, 22)
-
-		local speedRow = Instance.new("Frame")
-		speedRow.BackgroundTransparency = 1
-		speedRow.Size = UDim2.new(1, 0, 0, 60)
-		speedRow.Parent = flyScroll
-
-		local speedLabel = makeText(speedRow, "Speed: " .. tostring(flySpeed), 14, true)
-		speedLabel.Size = UDim2.new(1, 0, 0, 18)
-
-		local sliderBg = Instance.new("Frame")
-		sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		sliderBg.BackgroundTransparency = 0.15
-		sliderBg.BorderSizePixel = 0
-		sliderBg.Position = UDim2.new(0, 0, 0, 26)
-		sliderBg.Size = UDim2.new(1, 0, 0, 10)
-		sliderBg.Parent = speedRow
-		makeCorner(sliderBg, 999)
-
-		local sliderFill = Instance.new("Frame")
-		sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-		sliderFill.BorderSizePixel = 0
-		sliderFill.Size = UDim2.new(0, 0, 1, 0)
-		sliderFill.Parent = sliderBg
-		makeCorner(sliderFill, 999)
-
-		local knob = Instance.new("Frame")
-		knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-		knob.BorderSizePixel = 0
-		knob.Size = UDim2.new(0, 14, 0, 14)
-		knob.Parent = sliderBg
-		makeCorner(knob, 999)
-
-		local resetBtn = makeButton(speedRow, "Reset")
-		resetBtn.Size = UDim2.new(0, 100, 0, 34)
-		resetBtn.AnchorPoint = Vector2.new(1, 0)
-		resetBtn.Position = UDim2.new(1, 0, 0, 42)
-
-		local function setSpeedFromAlpha(a)
-			a = clamp01(a)
-			local s = minFlySpeed + (maxFlySpeed - minFlySpeed) * a
-			flySpeed = math.floor(s + 0.5)
-			speedLabel.Text = "Speed: " .. tostring(flySpeed)
-			sliderFill.Size = UDim2.new(a, 0, 1, 0)
-			knob.Position = UDim2.new(a, -7, 0.5, -7)
-			scheduleSave()
-		end
-
-		local function alphaFromSpeed(s)
-			s = math.clamp(s, minFlySpeed, maxFlySpeed)
-			return (s - minFlySpeed) / (maxFlySpeed - minFlySpeed)
-		end
-
-		setSpeedFromAlpha(alphaFromSpeed(flySpeed))
-
-		local dragging = false
-		sliderBg.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-			end
-		end)
-		sliderBg.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(i)
-			if not dragging then return end
-			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
-			local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-			setSpeedFromAlpha(a)
-		end)
-
-		resetBtn.MouseButton1Click:Connect(function()
-			flySpeed = 200
-			setSpeedFromAlpha(alphaFromSpeed(flySpeed))
-			notify("Fly", "Fly speed reset.", 2)
-		end)
 	end
 
 	----------------------------------------------------------------
-	-- ANIM PACKS TAB
+	-- CLIENT TAB (placeholder kept)
 	----------------------------------------------------------------
 	do
-		local header = makeText(animScroll, "Anim Packs", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		local help = makeText(animScroll, "Pick a STATE, then pick a pack name to change only that state.", 13, false)
-		help.Size = UDim2.new(1, 0, 0, 34)
-		help.TextColor3 = Color3.fromRGB(210, 210, 210)
-
-		local animStateBar = Instance.new("ScrollingFrame")
-		animStateBar.BackgroundTransparency = 1
-		animStateBar.BorderSizePixel = 0
-		animStateBar.Size = UDim2.new(1, 0, 0, 44)
-		animStateBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animStateBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		animStateBar.ScrollingDirection = Enum.ScrollingDirection.X
-		animStateBar.ScrollBarThickness = 2
-		animStateBar.Parent = animScroll
-
-		local stLayout = Instance.new("UIListLayout")
-		stLayout.FillDirection = Enum.FillDirection.Horizontal
-		stLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		stLayout.Padding = UDim.new(0, 12)
-		stLayout.Parent = animStateBar
-
-		local animCategoryBar = Instance.new("ScrollingFrame")
-		animCategoryBar.BackgroundTransparency = 1
-		animCategoryBar.BorderSizePixel = 0
-		animCategoryBar.Size = UDim2.new(1, 0, 0, 44)
-		animCategoryBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animCategoryBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		animCategoryBar.ScrollingDirection = Enum.ScrollingDirection.X
-		animCategoryBar.ScrollBarThickness = 2
-		animCategoryBar.Parent = animScroll
-
-		local catLayout = Instance.new("UIListLayout")
-		catLayout.FillDirection = Enum.FillDirection.Horizontal
-		catLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		catLayout.Padding = UDim.new(0, 12)
-		catLayout.Parent = animCategoryBar
-
-		local animListScroll = Instance.new("ScrollingFrame")
-		animListScroll.BackgroundTransparency = 1
-		animListScroll.BorderSizePixel = 0
-		animListScroll.Size = UDim2.new(1, 0, 0, 250)
-		animListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-		animListScroll.ScrollBarThickness = 4
-		animListScroll.Parent = animScroll
-
-		local pad = Instance.new("UIPadding")
-		pad.PaddingTop = UDim.new(0, 6)
-		pad.PaddingBottom = UDim.new(0, 6)
-		pad.PaddingLeft = UDim.new(0, 2)
-		pad.PaddingRight = UDim.new(0, 2)
-		pad.Parent = animListScroll
-
-		local animListContainer = Instance.new("Frame")
-		animListContainer.BackgroundTransparency = 1
-		animListContainer.Size = UDim2.new(1, 0, 0, 0)
-		animListContainer.Parent = animListScroll
-
-		local listLayout = Instance.new("UIListLayout")
-		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		listLayout.Padding = UDim.new(0, 10)
-		listLayout.Parent = animListContainer
-
-		local stateButtons = {}
-		local categoryButtons = {}
-
-		local function rebuildPackList()
-			for _, ch in ipairs(animListContainer:GetChildren()) do
-				if ch:IsA("TextButton") or ch:IsA("TextLabel") or ch:IsA("Frame") then
-					ch:Destroy()
-				end
-			end
-
-			if lastChosenCategory == "Custom" then
-				local names = listCustomNamesForState(lastChosenState)
-				if #names == 0 then
-					local t = makeText(animListContainer, "No Custom animations for: " .. lastChosenState, 14, true)
-					t.Size = UDim2.new(1, 0, 0, 28)
-					return
-				end
-
-				for _, nm in ipairs(names) do
-					local b = makeButton(animListContainer, nm)
-					b.Size = UDim2.new(1, 0, 0, 36)
-					b.MouseButton1Click:Connect(function()
-						local id = getCustomIdForState(nm, lastChosenState)
-						if not id then return end
-						stateOverrides[lastChosenState] = "rbxassetid://" .. tostring(id)
-						local ok = applyStateOverrideToAnimate(lastChosenState, stateOverrides[lastChosenState])
-						if ok then
-							notify("Anim Packs", "Set " .. lastChosenState .. " to " .. nm, 2)
-							scheduleSave()
-						else
-							notify("Anim Packs", "Failed to apply. (Animate script missing?)", 3)
-						end
-					end)
-				end
-				return
-			end
-
-			local names = listPackNamesForCategory(lastChosenCategory)
-			for _, packName in ipairs(names) do
-				local b = makeButton(animListContainer, packName)
-				b.Size = UDim2.new(1, 0, 0, 36)
-				b.MouseButton1Click:Connect(function()
-					local id = getPackValueForState(packName, lastChosenState)
-					if not id then
-						notify("Anim Packs", "That pack has no ID for: " .. lastChosenState, 2)
-						return
-					end
-					stateOverrides[lastChosenState] = "rbxassetid://" .. tostring(id)
-					local ok = applyStateOverrideToAnimate(lastChosenState, stateOverrides[lastChosenState])
-					if ok then
-						notify("Anim Packs", "Set " .. lastChosenState .. " to " .. packName, 2)
-						scheduleSave()
-					else
-						notify("Anim Packs", "Failed to apply. (Animate script missing?)", 3)
-					end
-				end)
-			end
-		end
-
-		local function setState(stateName)
-			lastChosenState = stateName
-			for n, btn in pairs(stateButtons) do
-				setTabButtonActive(btn, n == stateName)
-			end
-			rebuildPackList()
-			scheduleSave()
-		end
-
-		local function setCategory(catName)
-			lastChosenCategory = catName
-			for n, btn in pairs(categoryButtons) do
-				setTabButtonActive(btn, n == catName)
-			end
-			rebuildPackList()
-			scheduleSave()
-		end
-
-		local states = { "Idle", "Walk", "Run", "Jump", "Climb", "Fall", "Swim" }
-		for _, sName in ipairs(states) do
-			local b = makeButton(animStateBar, sName)
-			b.Size = UDim2.new(0, 110, 0, 36)
-			stateButtons[sName] = b
-			b.MouseButton1Click:Connect(function()
-				setState(sName)
-			end)
-		end
-
-		local cats = { "Roblox Anims", "Unreleased", "Custom" }
-		for _, cName in ipairs(cats) do
-			local b = makeButton(animCategoryBar, cName)
-			b.Size = UDim2.new(0, (cName == "Roblox Anims" and 160 or 130), 0, 36)
-			categoryButtons[cName] = b
-			b.MouseButton1Click:Connect(function()
-				setCategory(cName)
-			end)
-		end
-
-		setCategory(lastChosenCategory)
-		setState(lastChosenState)
-	end
-
-	----------------------------------------------------------------
-	-- PLAYER TAB
-	----------------------------------------------------------------
-	do
-		local header = makeText(playerScroll, "Player", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		local info = makeText(playerScroll, "WalkSpeed changer. Reset uses the game's default speed for you.", 13, false)
-		info.Size = UDim2.new(1, 0, 0, 34)
-		info.TextColor3 = Color3.fromRGB(210, 210, 210)
-
-		local row = Instance.new("Frame")
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 76)
-		row.Parent = playerScroll
-
-		local speedLabel = makeText(row, "Speed: " .. tostring(playerSpeed or 16), 14, true)
-		speedLabel.Size = UDim2.new(1, 0, 0, 18)
-
-		local sliderBg = Instance.new("Frame")
-		sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		sliderBg.BackgroundTransparency = 0.15
-		sliderBg.BorderSizePixel = 0
-		sliderBg.Position = UDim2.new(0, 0, 0, 26)
-		sliderBg.Size = UDim2.new(1, 0, 0, 10)
-		sliderBg.Parent = row
-		makeCorner(sliderBg, 999)
-
-		local sliderFill = Instance.new("Frame")
-		sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-		sliderFill.BorderSizePixel = 0
-		sliderFill.Size = UDim2.new(0, 0, 1, 0)
-		sliderFill.Parent = sliderBg
-		makeCorner(sliderFill, 999)
-
-		local knob = Instance.new("Frame")
-		knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-		knob.BorderSizePixel = 0
-		knob.Size = UDim2.new(0, 14, 0, 14)
-		knob.Parent = sliderBg
-		makeCorner(knob, 999)
-
-		local resetBtn = makeButton(row, "Reset")
-		resetBtn.Size = UDim2.new(0, 100, 0, 34)
-		resetBtn.AnchorPoint = Vector2.new(1, 0)
-		resetBtn.Position = UDim2.new(1, 0, 0, 42)
-
-		local function setSpeedFromAlpha(a)
-			a = clamp01(a)
-			local s = 2 + (500 - 2) * a
-			playerSpeed = math.floor(s + 0.5)
-			speedLabel.Text = "Speed: " .. tostring(playerSpeed)
-			sliderFill.Size = UDim2.new(a, 0, 1, 0)
-			knob.Position = UDim2.new(a, -7, 0.5, -7)
-			applyPlayerSpeed()
-			scheduleSave()
-		end
-
-		local function alphaFromSpeed(s)
-			s = math.clamp(s, 2, 500)
-			return (s - 2) / (500 - 2)
-		end
-
-		setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
-
-		local dragging = false
-		sliderBg.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-			end
-		end)
-		sliderBg.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(i)
-			if not dragging then return end
-			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
-			local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-			setSpeedFromAlpha(a)
-		end)
-
-		resetBtn.MouseButton1Click:Connect(function()
-			resetPlayerSpeedToDefault()
-			setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
-			notify("Player", "Speed reset.", 2)
-		end)
-	end
-
-	----------------------------------------------------------------
-	-- CAMERA TAB
-	----------------------------------------------------------------
-	do
-		local header = makeText(cameraScroll, "Camera", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		local sub = makeText(cameraScroll, "Attach mode keeps Shift Lock working. Offset, zoom, and FOV have resets.", 13, false)
-		sub.Size = UDim2.new(1, 0, 0, 34)
-		sub.TextColor3 = Color3.fromRGB(210, 210, 210)
-
-		local subjectHeader = makeText(cameraScroll, "Attach To", 15, true)
-		subjectHeader.Size = UDim2.new(1, 0, 0, 20)
-
-		local subjectBar = Instance.new("ScrollingFrame")
-		subjectBar.BackgroundTransparency = 1
-		subjectBar.BorderSizePixel = 0
-		subjectBar.Size = UDim2.new(1, 0, 0, 44)
-		subjectBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		subjectBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		subjectBar.ScrollingDirection = Enum.ScrollingDirection.X
-		subjectBar.ScrollBarThickness = 2
-		subjectBar.Parent = cameraScroll
-
-		local subjLayout = Instance.new("UIListLayout")
-		subjLayout.FillDirection = Enum.FillDirection.Horizontal
-		subjLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		subjLayout.Padding = UDim.new(0, 10)
-		subjLayout.Parent = subjectBar
-
-		local subjButtons = {}
-		local modes = { "Humanoid", "Head", "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso" }
-
-		local function setAttachMode(m)
-			camAttachMode = m
-			for k, b in pairs(subjButtons) do
-				setTabButtonActive(b, k == m)
-			end
-			applyCameraSettings()
-			scheduleSave()
-		end
-
-		for _, m in ipairs(modes) do
-			local b = makeButton(subjectBar, m)
-			b.Size = UDim2.new(0, 170, 0, 36)
-			subjButtons[m] = b
-			b.MouseButton1Click:Connect(function()
-				setAttachMode(m)
-			end)
-		end
-
-		local offHeader = makeText(cameraScroll, "Offset", 15, true)
-		offHeader.Size = UDim2.new(1, 0, 0, 20)
-
-		local function makeAxisSlider(axisName, getValFn, setValFn, minV, maxV)
-			local row = Instance.new("Frame")
-			row.BackgroundTransparency = 1
-			row.Size = UDim2.new(1, 0, 0, 66)
-			row.Parent = cameraScroll
-
-			local label = makeText(row, axisName .. ": " .. string.format("%.2f", getValFn()), 14, true)
-			label.Size = UDim2.new(1, -120, 0, 18)
-
-			local reset = makeButton(row, "Reset")
-			reset.Size = UDim2.new(0, 100, 0, 30)
-			reset.AnchorPoint = Vector2.new(1, 0)
-			reset.Position = UDim2.new(1, 0, 0, 0)
-
-			local sliderBg = Instance.new("Frame")
-			sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-			sliderBg.BackgroundTransparency = 0.15
-			sliderBg.BorderSizePixel = 0
-			sliderBg.Position = UDim2.new(0, 0, 0, 26)
-			sliderBg.Size = UDim2.new(1, 0, 0, 10)
-			sliderBg.Parent = row
-			makeCorner(sliderBg, 999)
-
-			local fill = Instance.new("Frame")
-			fill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-			fill.BorderSizePixel = 0
-			fill.Size = UDim2.new(0, 0, 1, 0)
-			fill.Parent = sliderBg
-			makeCorner(fill, 999)
-
-			local knob = Instance.new("Frame")
-			knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-			knob.BorderSizePixel = 0
-			knob.Size = UDim2.new(0, 14, 0, 14)
-			knob.Parent = sliderBg
-			makeCorner(knob, 999)
-
-			local function setFromAlpha(a)
-				a = clamp01(a)
-				local v = minV + (maxV - minV) * a
-				setValFn(v)
-				label.Text = axisName .. ": " .. string.format("%.2f", getValFn())
-				fill.Size = UDim2.new(a, 0, 1, 0)
-				knob.Position = UDim2.new(a, -7, 0.5, -7)
-				applyCameraSettings()
-				scheduleSave()
-			end
-
-			local function alphaFromValue(v)
-				v = math.clamp(v, minV, maxV)
-				return (v - minV) / (maxV - minV)
-			end
-
-			setFromAlpha(alphaFromValue(getValFn()))
-
-			local dragging = false
-			sliderBg.InputBegan:Connect(function(i)
-				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-					dragging = true
-				end
-			end)
-			sliderBg.InputEnded:Connect(function(i)
-				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-					dragging = false
-				end
-			end)
-			UserInputService.InputChanged:Connect(function(i)
-				if not dragging then return end
-				if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
-				local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-				setFromAlpha(a)
-			end)
-
-			reset.MouseButton1Click:Connect(function()
-				if axisName == "X" then camOffset = Vector3.new(0, camOffset.Y, camOffset.Z) end
-				if axisName == "Y" then camOffset = Vector3.new(camOffset.X, 0, camOffset.Z) end
-				if axisName == "Z" then camOffset = Vector3.new(camOffset.X, camOffset.Y, 0) end
-				setFromAlpha(alphaFromValue(getValFn()))
-				notify("Camera", "Reset " .. axisName .. ".", 2)
-			end)
-		end
-
-		makeAxisSlider("X", function() return camOffset.X end, function(v) camOffset = Vector3.new(v, camOffset.Y, camOffset.Z) end, -10, 10)
-		makeAxisSlider("Y", function() return camOffset.Y end, function(v) camOffset = Vector3.new(camOffset.X, v, camOffset.Z) end, -10, 10)
-		makeAxisSlider("Z", function() return camOffset.Z end, function(v) camOffset = Vector3.new(camOffset.X, camOffset.Y, v) end, -10, 10)
-
-		local resetAll = makeButton(cameraScroll, "Reset Camera (All)")
-		resetAll.Size = UDim2.new(0, 220, 0, 36)
-		resetAll.MouseButton1Click:Connect(function()
-			resetCameraToDefaults()
-			notify("Camera", "Camera reset.", 2)
-		end)
-
-		setAttachMode(camAttachMode)
-		applyCameraSettings()
-	end
-
-	----------------------------------------------------------------
-	-- LIGHTING TAB
-	----------------------------------------------------------------
-	do
-		local header = makeText(lightingScroll, "Lighting", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		readLightingSaveState()
-
-		local topRow = Instance.new("Frame")
-		topRow.BackgroundTransparency = 1
-		topRow.Size = UDim2.new(1, 0, 0, 44)
-		topRow.Parent = lightingScroll
-
-		local topLay = Instance.new("UIListLayout")
-		topLay.FillDirection = Enum.FillDirection.Horizontal
-		topLay.Padding = UDim.new(0, 10)
-		topLay.Parent = topRow
-
-		local enableBtn = makeButton(topRow, LightingState.Enabled and "Enabled" or "Disabled")
-		enableBtn.Size = UDim2.new(0, 140, 0, 36)
-
-		local resetBtn = makeButton(topRow, "Reset Lighting")
-		resetBtn.Size = UDim2.new(0, 160, 0, 36)
-
-		enableBtn.MouseButton1Click:Connect(function()
-			LightingState.Enabled = not LightingState.Enabled
-			enableBtn.Text = LightingState.Enabled and "Enabled" or "Disabled"
-			writeLightingSaveState()
-			syncLightingToggles()
-		end)
-
-		resetBtn.MouseButton1Click:Connect(function()
-			resetLightingToOriginal()
-			notify("Lighting", "Reset.", 2)
-		end)
-
-		local skyHeader = makeText(lightingScroll, "Sky Presets", 15, true)
-		skyHeader.Size = UDim2.new(1, 0, 0, 20)
-
-		local skyBar = Instance.new("ScrollingFrame")
-		skyBar.BackgroundTransparency = 1
-		skyBar.BorderSizePixel = 0
-		skyBar.Size = UDim2.new(1, 0, 0, 44)
-		skyBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		skyBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		skyBar.ScrollingDirection = Enum.ScrollingDirection.X
-		skyBar.ScrollBarThickness = 2
-		skyBar.Parent = lightingScroll
-
-		local skyLayout = Instance.new("UIListLayout")
-		skyLayout.FillDirection = Enum.FillDirection.Horizontal
-		skyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		skyLayout.Padding = UDim.new(0, 10)
-		skyLayout.Parent = skyBar
-
-		local skyButtons = {}
-
-		local function setSkyActive(name)
-			for k, b in pairs(skyButtons) do
-				setTabButtonActive(b, k == name)
-			end
-		end
-
-		for name, _ in pairs(SKY_PRESETS) do
-			local b = makeButton(skyBar, name)
-			b.Size = UDim2.new(0, 190, 0, 36)
-			skyButtons[name] = b
-			b.MouseButton1Click:Connect(function()
-				setSkyActive(name)
-				applySkyPreset(name)
-				notify("Lighting", "Applied: " .. name, 2)
-			end)
-		end
-
-		local fxHeader = makeText(lightingScroll, "Effects", 15, true)
-		fxHeader.Size = UDim2.new(1, 0, 0, 20)
-
-		local function makeToggle(nameKey, labelText)
-			local row = Instance.new("Frame")
-			row.BackgroundTransparency = 1
-			row.Size = UDim2.new(1, 0, 0, 40)
-			row.Parent = lightingScroll
-
-			local btn = makeButton(row, "")
-			btn.Size = UDim2.new(0, 180, 0, 36)
-			btn.Position = UDim2.new(0, 0, 0, 2)
-
-			local function refresh()
-				btn.Text = (LightingState.Toggles[nameKey] and "ON: " or "OFF: ") .. labelText
-				setTabButtonActive(btn, LightingState.Toggles[nameKey])
-			end
-
-			btn.MouseButton1Click:Connect(function()
-				LightingState.Toggles[nameKey] = not LightingState.Toggles[nameKey]
-				writeLightingSaveState()
-				syncLightingToggles()
-				refresh()
-			end)
-
-			refresh()
-		end
-
-		makeToggle("Sky", "Sky")
-		makeToggle("Atmosphere", "Atmosphere")
-		makeToggle("ColorCorrection", "Color Correction")
-		makeToggle("Bloom", "Bloom")
-		makeToggle("DepthOfField", "Depth Of Field")
-		makeToggle("MotionBlur", "Motion Blur")
-		makeToggle("SunRays", "Sun Rays")
-
-		if LightingState.SelectedSky and SKY_PRESETS[LightingState.SelectedSky] then
-			setSkyActive(LightingState.SelectedSky)
-			if LightingState.Enabled then
-				applySkyPreset(LightingState.SelectedSky)
-			end
-		end
-	end
-
-	----------------------------------------------------------------
-	-- MIC UP TAB (conditional)
-	----------------------------------------------------------------
-	if micupScroll then
-		local header = makeText(micupScroll, "Mic up", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		local msg = makeText(micupScroll, "(Some stuff will be added soon)", 14, false)
-		msg.Size = UDim2.new(1, 0, 0, 80)
-	end
-
-	----------------------------------------------------------------
-	-- SERVER TAB
-	----------------------------------------------------------------
-	do
-		local header = makeText(serverScroll, "Server", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
-
-		local controls = makeText(serverScroll, "Controls\n- Rejoin: same server\n- Server Hop: best-effort (highest players).", 14, false)
-		controls.Size = UDim2.new(1, 0, 0, 56)
-
-		local row = Instance.new("Frame")
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 44)
-		row.Parent = serverScroll
-
-		local lay = Instance.new("UIListLayout")
-		lay.FillDirection = Enum.FillDirection.Horizontal
-		lay.Padding = UDim.new(0, 10)
-		lay.Parent = row
-
-		local rejoinBtn = makeButton(row, "Rejoin (Same Server)")
-		rejoinBtn.Size = UDim2.new(0, 230, 0, 36)
-
-		local hopBtn = makeButton(row, "Server Hop")
-		hopBtn.Size = UDim2.new(0, 140, 0, 36)
-
-		rejoinBtn.MouseButton1Click:Connect(function()
-			notify("Server", "Rejoining same server...", 2)
-			pcall(function()
-				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-			end)
-		end)
-
-		hopBtn.MouseButton1Click:Connect(function()
-			notify("Server", "Searching servers...", 2)
-
-			task.spawn(function()
-				local placeId = game.PlaceId
-				local cursor = ""
-				local best = nil
-
-				for _ = 1, 3 do
-					local url = "https://games.roblox.com/v1/games/" .. tostring(placeId) .. "/servers/Public?sortOrder=Desc&limit=100"
-					if cursor ~= "" then
-						url = url .. "&cursor=" .. HttpService:UrlEncode(cursor)
-					end
-
-					local ok, res = pcall(function()
-						return HttpService:GetAsync(url)
-					end)
-
-					if not ok then
-						notify("Server Hop", "HTTP failed. (HttpEnabled might be off)", 4)
-						pcall(function()
-							TeleportService:Teleport(placeId, LocalPlayer)
-						end)
-						return
-					end
-
-					local data = HttpService:JSONDecode(res)
-					for _, srv in ipairs(data.data or {}) do
-						if srv.id and srv.id ~= game.JobId then
-							if not best or (srv.playing or 0) > (best.playing or 0) then
-								best = srv
-							end
-						end
-					end
-
-					cursor = data.nextPageCursor or ""
-					if cursor == "" then break end
-				end
-
-				if best and best.id then
-					notify("Server Hop", "Teleporting...", 2)
-					pcall(function()
-						TeleportService:TeleportToPlaceInstance(placeId, best.id, LocalPlayer)
-					end)
-				else
-					notify("Server Hop", "No server found. Trying normal teleport.", 3)
-					pcall(function()
-						TeleportService:Teleport(placeId, LocalPlayer)
-					end)
-				end
-			end)
-		end)
-	end
-
-	----------------------------------------------------------------
-	-- CLIENT TAB
-	----------------------------------------------------------------
-	do
-		local t = makeText(clientScroll, "Client", 16, true)
-		t.Size = UDim2.new(1, 0, 0, 22)
-
-		local msg = makeText(clientScroll,
-			"Auto load:\nPut this LocalScript in StarterPlayerScripts so it runs every join.\n\nYield safe boot:\nThis script already waits for game load and PlayerGui.\n",
-			13, false
-		)
-		msg.Size = UDim2.new(1, 0, 0, 120)
+		local t = makeText(clientScroll, "Client\n(Coming soon)", 14, true)
+		t.Size = UDim2.new(1, 0, 0, 50)
 	end
 
 	----------------------------------------------------------------
@@ -3362,7 +2081,6 @@ local function createUI()
 
 	applyPlayerSpeed()
 	applyCameraSettings()
-	syncLightingToggles()
 end
 
 --------------------------------------------------------------------
@@ -3378,6 +2096,10 @@ UserInputService.InputBegan:Connect(function(input, gp)
 			pcall(function()
 				arrowButton:Activate()
 			end)
+		end
+	elseif input.KeyCode == Enum.KeyCode.Escape then
+		if statsPopup then
+			statsPopup.Visible = false
 		end
 	end
 end)
@@ -3520,36 +2242,46 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 Players.PlayerRemoving:Connect(function(plr)
 	if plr and plr.Character then
-		destroyExistingTag(plr.Character)
+		destroyTagGui(plr.Character, "SOS_RoleTag")
+		destroyTagGui(plr.Character, "SOS_AKTag")
+		destroyTagGui(plr.Character, "SOS_KSKTag")
 	end
 end)
 
 hookChatListeners()
 
--- Startup: broadcast all three markers so others can see roles and badges
+-- fast initial tags
 task.defer(function()
-	broadcastSOSMarker()
-	broadcastAKMarker()
-	broadcastFakeAKMarker()
+	-- Owners get their role tag instantly
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if isOwner(plr) then
+			refreshAllTagsForPlayer(plr)
+		end
+	end
+
+	-- Broadcast all three markers on startup for you
+	-- SOS marker means you are SOS
+	-- AK and KSK are independent markers
+	broadcastSosMarker()
+	broadcastAkMarker()
+	broadcastKskMarker()
 end)
 
 createUI()
 applyPlayerSpeed()
 applyCameraSettings()
 reapplyAllOverridesAfterRespawn()
-syncLightingToggles()
 
 LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(0.15)
+	task.wait(0.12)
 	getCharacter()
 
 	applyPlayerSpeed()
 	applyCameraSettings()
 	reapplyAllOverridesAfterRespawn()
-	syncLightingToggles()
 
 	for _, plr in ipairs(Players:GetPlayers()) do
-		refreshTag(plr)
+		refreshAllTagsForPlayer(plr)
 	end
 
 	if flying then
