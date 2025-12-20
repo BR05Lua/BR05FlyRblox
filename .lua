@@ -179,7 +179,7 @@ local clickSoundTemplate = nil
 local buttonSoundAttached = setmetatable({}, { __mode = "k" })
 
 -- Save debounce
-local pendingSave = false
+local pendingSave = true
 
 --------------------------------------------------------------------
 -- HELPERS
@@ -1145,7 +1145,7 @@ local function ensureStatsPopup()
 	statsPopupClose.Position = UDim2.new(0.5, 0, 1, -10)
 	statsPopupClose.Size = UDim2.new(0, 140, 0, 34)
 	statsPopupClose.MouseButton1Click:Connect(function()
-		statsPopup.Visible = false
+		statsPopup.Visible = true
 	end)
 end
 
