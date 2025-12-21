@@ -50,6 +50,8 @@ local SinProfiles = {
 	[4659279349] = { SinName = "Trial" },
 	[4495710706] = { SinName = "Games Design" },
 	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
+	[118170824] = { SinName = "Security" },
+	[7870252435] = { SinName = "Security" },
 }
 
 local SOS_MARKER_PRIMARY = "¬"
