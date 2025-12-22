@@ -52,7 +52,7 @@ local SinProfiles = {
 	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
 	[118170824] = { SinName = "Security" },
 	[7870252435] = { SinName = "Security" },
-	[7452991350] = { SinName = "XTC", Color = Color3.fromRGB(0, 255, 0) },
+	[7452991350] = { SinName = "XTCY", Color = Color3.fromRGB(0, 255, 0) },
 }
 
 local SOS_MARKER_PRIMARY = "؍"
