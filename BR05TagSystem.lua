@@ -1251,7 +1251,6 @@ local function init()
 end
 
 task.delay(INIT_DELAY, init)
-end
 
 wait(1)
 
