@@ -4,22 +4,31 @@
 -- Markers
 -- Activation marker: 𖺗
 -- Reply marker: ¬
+-- AK markers: ؍؍؍ or ؍ (detected with contains-match too)
+
 -- Behavior
 -- 1) If someone sends 𖺗, that sender gets SOS tags.
 -- 2) Your client replies with ¬ ONLY after:
---    - it has seen the first 𖺗 already, AND
---    - it has NOT replied before (only ONE ¬ per session), AND
+--    - it has seen the first 𖺗 already (global warmup), AND
+--    - it has NOT replied to that sender before (ONE ¬ per person per join), AND
 --    - the sender is NOT you.
+--    Reply-per-person resets when they leave and rejoin.
 -- 3) If someone sends ¬, that sender also gets SOS tags.
--- 4) AK marker is ؍؍؍ or ؍, and AK orb only shows if the player is SOS-activated AND AK-activated.
+-- 4) AK orb only shows if the player is SOS activated AND AK activated. Owners never show AK orb.
+
 -- UI
 -- Bottom-left broadcast buttons only visible to:
 -- - Owner(s)
 -- - Sin of Cinna (UserId 2630250935)
+
 -- FX
--- - Owner + Cinna get intense speed trails (only while moving).
+-- Owner + Cinna get intense speed trails (only while moving).
 --   Owner = rainbow trails. Cinna = light blue faded to red.
 --   Trail length grows with speed, capped at 20 studs.
+
+-- Owner sky effect
+-- When an Owner is present, non-owners see a fast rainbow sky for 10 seconds then it auto disables.
+-- Owners do not see it, but get a notification.
 
 --------------------------------------------------------------------
 -- SERVICES
@@ -107,8 +116,14 @@ local CustomTags = {
 --------------------------------------------------------------------
 local TRAIL_FOLDER_NAME = "SOS_RunTrails"
 local TRAIL_MAX_STUDS = 20
-local TRAIL_LEN_PER_SPEED = 0.7 -- higher = longer faster
+local TRAIL_LEN_PER_SPEED = 0.7
 local TRAIL_MIN_SPEED = 1.5
+
+--------------------------------------------------------------------
+-- OWNER SKY EFFECT (10 seconds, fast)
+--------------------------------------------------------------------
+local SKY_DURATION = 10
+local SKY_SPEED = 3.5 -- faster color cycling
 
 --------------------------------------------------------------------
 -- STATE
@@ -116,11 +131,11 @@ local TRAIL_MIN_SPEED = 1.5
 local SosUsers = {}
 local AkUsers = {}
 
--- First 𖺗 we see: do NOT auto-reply with ¬
+-- Warmup: do NOT auto-reply on the very first activation we see
 local SeenFirstActivation = false
 
--- Only ONE ¬ reply per session (after first activation has been seen)
-local SentReplyOnce = false
+-- NEW: reply only once per person per join
+local RepliedToActivationUserId = {}
 
 local gui
 local statsPopup
@@ -130,17 +145,16 @@ local broadcastPanel
 local broadcastSOS
 local broadcastAK
 
--- Owner sky effect state
-local ownerEffectRunning = false
-local rainbowSkyEnabled = false
+-- Sky effect state
 local rainbowTick = 0
 local savedLightingState = nil
 local overlaySky = nil
-local ownerSkyNotified = false
-local lastOwnerPresence = false
+local skyTimerTask = nil
+local skyActive = false
+local skyEverStartedForThisOwnerPresence = false
 
--- Running connections per user for trails
-local TrailsConnByUserId = {} -- [userId] = RBXScriptConnection
+-- Trail connections
+local TrailsConnByUserId = {}
 
 --------------------------------------------------------------------
 -- UI HELPERS
@@ -264,10 +278,6 @@ end
 
 local function isOwner(plr)
 	return (OwnerNames[plr.Name] == true) or (OwnerUserIds[plr.UserId] == true)
-end
-
-local function isCinna(plr)
-	return plr and plr.UserId == 2630250935
 end
 
 local function canSeeBroadcastButtons()
@@ -491,6 +501,7 @@ end
 --------------------------------------------------------------------
 local function teleportBehind(plr, studsBack)
 	if not plr or plr == LocalPlayer then return end
+
 	local myChar = LocalPlayer.Character
 	local theirChar = plr.Character
 	if not myChar or not theirChar then return end
@@ -500,7 +511,17 @@ local function teleportBehind(plr, studsBack)
 	if not myHRP or not theirHRP then return end
 
 	local back = studsBack or 5
-	myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, back)
+	local targetCf = theirHRP.CFrame * CFrame.new(0, 0, back)
+
+	if myChar and myChar.Parent then
+		pcall(function()
+			if myChar.PivotTo then
+				myChar:PivotTo(targetCf)
+			else
+				myHRP.CFrame = targetCf
+			end
+		end)
+	end
 end
 
 local function showPlayerStats(plr)
@@ -524,14 +545,17 @@ local function showPlayerStats(plr)
 end
 
 local function makeTagButtonCommon(btn, plr)
-	btn.Activated:Connect(function()
+	local function act()
 		local holdingCtrl = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
 		if holdingCtrl then
 			showPlayerStats(plr)
 		else
 			teleportBehind(plr, 5)
 		end
-	end)
+	end
+
+	btn.MouseButton1Click:Connect(act)
+	btn.Activated:Connect(act)
 end
 
 --------------------------------------------------------------------
@@ -673,7 +697,6 @@ local function makeTrailOnPart(part, parentFolder)
 	tr.LightEmission = 1
 	tr.Brightness = 2
 
-	-- Intense look
 	tr.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.08),
 		NumberSequenceKeypoint.new(0.45, 0.22),
@@ -727,7 +750,6 @@ local function ensureRunTrails(plr, role)
 	folder.Parent = char
 
 	local trails = {}
-
 	for _, inst in ipairs(char:GetDescendants()) do
 		if inst:IsA("BasePart") and inst.Name ~= "HumanoidRootPart" then
 			local tr = makeTrailOnPart(inst, folder)
@@ -759,12 +781,9 @@ local function ensureRunTrails(plr, role)
 			return
 		end
 
-		-- desired length grows with speed, cap at 20 studs
 		local desiredLen = math.clamp(speed * TRAIL_LEN_PER_SPEED, 0, TRAIL_MAX_STUDS)
-
-		-- Trail length approx = speed * lifetime -> lifetime = length/speed
 		local lifetime = desiredLen / math.max(speed, 1)
-		lifetime = math.clamp(lifetime, 0.10, 0.45) -- lasts longer now
+		lifetime = math.clamp(lifetime, 0.10, 0.45)
 
 		for _, tr in ipairs(trails) do
 			tr.Lifetime = lifetime
@@ -780,16 +799,134 @@ local function ensureRunTrails(plr, role)
 	TrailsConnByUserId[plr.UserId] = conn
 end
 --------------------------------------------------------------------
+-- SKY EFFECT HELPERS (10 seconds)
+--------------------------------------------------------------------
+local function snapshotLighting()
+	if savedLightingState then return end
+	savedLightingState = {
+		Ambient = Lighting.Ambient,
+		OutdoorAmbient = Lighting.OutdoorAmbient,
+		Brightness = Lighting.Brightness,
+		ClockTime = Lighting.ClockTime,
+		FogColor = Lighting.FogColor,
+		FogStart = Lighting.FogStart,
+		FogEnd = Lighting.FogEnd,
+		ColorShift_Top = Lighting.ColorShift_Top,
+		ColorShift_Bottom = Lighting.ColorShift_Bottom,
+	}
+end
+
+local function restoreLighting()
+	if not savedLightingState then return end
+	Lighting.Ambient = savedLightingState.Ambient
+	Lighting.OutdoorAmbient = savedLightingState.OutdoorAmbient
+	Lighting.Brightness = savedLightingState.Brightness
+	Lighting.ClockTime = savedLightingState.ClockTime
+	Lighting.FogColor = savedLightingState.FogColor
+	Lighting.FogStart = savedLightingState.FogStart
+	Lighting.FogEnd = savedLightingState.FogEnd
+	Lighting.ColorShift_Top = savedLightingState.ColorShift_Top
+	Lighting.ColorShift_Bottom = savedLightingState.ColorShift_Bottom
+	savedLightingState = nil
+end
+
+local function enableOwnerSkyFor10s()
+	if isOwner(LocalPlayer) then
+		notify("Owner Sky", "Rainbow sky triggered for non-owners. You will not see it.", 3)
+		return
+	end
+
+	if skyActive then
+		return
+	end
+
+	snapshotLighting()
+	skyActive = true
+	rainbowTick = 0
+
+	if not overlaySky then
+		overlaySky = Instance.new("Sky")
+		overlaySky.Name = "SOS_OwnerRainbowSky"
+		overlaySky.SkyboxBk = "rbxassetid://159454299"
+		overlaySky.SkyboxDn = "rbxassetid://159454296"
+		overlaySky.SkyboxFt = "rbxassetid://159454293"
+		overlaySky.SkyboxLf = "rbxassetid://159454286"
+		overlaySky.SkyboxRt = "rbxassetid://159454300"
+		overlaySky.SkyboxUp = "rbxassetid://159454288"
+		overlaySky.StarCount = 3000
+		overlaySky.Parent = Lighting
+	end
+
+	if skyTimerTask then
+		pcall(function() task.cancel(skyTimerTask) end)
+	end
+
+	skyTimerTask = task.spawn(function()
+		task.wait(SKY_DURATION)
+		if overlaySky then
+			overlaySky:Destroy()
+			overlaySky = nil
+		end
+		skyActive = false
+		restoreLighting()
+	end)
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not skyActive then return end
+
+	rainbowTick = rainbowTick + dt * SKY_SPEED
+	local t = rainbowTick
+
+	local r = (math.sin(t * 0.8) * 0.5 + 0.5)
+	local g = (math.sin(t * 0.8 + 2.094) * 0.5 + 0.5)
+	local b = (math.sin(t * 0.8 + 4.188) * 0.5 + 0.5)
+
+	Lighting.Brightness = 2.6
+	Lighting.ClockTime = (t * 1.8) % 24
+	Lighting.Ambient = Color3.new(r * 0.35, g * 0.35, b * 0.45)
+	Lighting.OutdoorAmbient = Color3.new(r * 0.25, g * 0.25, b * 0.35)
+	Lighting.FogColor = Color3.new(r * 0.35, g * 0.30, b * 0.40)
+	Lighting.FogStart = 0
+	Lighting.FogEnd = 1000
+	Lighting.ColorShift_Top = Color3.new(r * 0.55, g * 0.35, b * 0.65)
+	Lighting.ColorShift_Bottom = Color3.new(r * 0.25, g * 0.45, b * 0.30)
+end)
+
+local function anyOwnerPresent()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if isOwner(p) then
+			return true
+		end
+	end
+	return false
+end
+
+local function reconcileOwnerPresence()
+	local present = anyOwnerPresent()
+	if present and not skyEverStartedForThisOwnerPresence then
+		skyEverStartedForThisOwnerPresence = true
+		enableOwnerSkyFor10s()
+	elseif not present then
+		skyEverStartedForThisOwnerPresence = false
+	end
+end
+
+--------------------------------------------------------------------
 -- TAGS
 --------------------------------------------------------------------
+local function destroyTagGui(char, name)
+	if not char then return end
+	local old = char:FindFirstChild(name)
+	if old then old:Destroy() end
+end
+
 local function createSosRoleTag(plr)
 	if not plr then return end
 	local char = plr.Character
 	if not char then return end
 
 	local role = getSosRole(plr)
-
-	-- Trails are driven by role for Owner + Cinna
 	ensureRunTrails(plr, role)
 
 	if not role then
@@ -888,13 +1025,11 @@ local function createAkOrbTag(plr)
 	local char = plr.Character
 	if not char then return end
 
-	-- Owner never shows AK
 	if isOwner(plr) then
 		destroyTagGui(char, "SOS_AKTag")
 		return
 	end
 
-	-- AK orb only shows if SOS-activated too
 	if not SosUsers[plr.UserId] then
 		destroyTagGui(char, "SOS_AKTag")
 		return
@@ -948,12 +1083,10 @@ end
 
 local function hookPlayer(plr)
 	if not plr then return end
-
 	plr.CharacterAdded:Connect(function()
 		task.wait(0.12)
 		refreshAllTagsForPlayer(plr)
 	end)
-
 	if plr.Character then
 		task.defer(function()
 			refreshAllTagsForPlayer(plr)
@@ -962,7 +1095,7 @@ local function hookPlayer(plr)
 end
 
 --------------------------------------------------------------------
--- SOS + AK STATE UPDATES
+-- SOS + AK UPDATES
 --------------------------------------------------------------------
 local function onSosActivated(userId)
 	if typeof(userId) ~= "number" then return end
@@ -982,192 +1115,37 @@ local function onAkSeen(userId)
 	end
 end
 
---------------------------------------------------------------------
--- OWNER SKY EFFECT (non-owners only)
---------------------------------------------------------------------
-local function snapshotLighting()
-	if savedLightingState then return end
-	savedLightingState = {
-		Ambient = Lighting.Ambient,
-		OutdoorAmbient = Lighting.OutdoorAmbient,
-		Brightness = Lighting.Brightness,
-		ClockTime = Lighting.ClockTime,
-		FogColor = Lighting.FogColor,
-		FogStart = Lighting.FogStart,
-		FogEnd = Lighting.FogEnd,
-		ColorShift_Top = Lighting.ColorShift_Top,
-		ColorShift_Bottom = Lighting.ColorShift_Bottom,
-	}
-end
-
-local function restoreLighting()
-	if not savedLightingState then return end
-	Lighting.Ambient = savedLightingState.Ambient
-	Lighting.OutdoorAmbient = savedLightingState.OutdoorAmbient
-	Lighting.Brightness = savedLightingState.Brightness
-	Lighting.ClockTime = savedLightingState.ClockTime
-	Lighting.FogColor = savedLightingState.FogColor
-	Lighting.FogStart = savedLightingState.FogStart
-	Lighting.FogEnd = savedLightingState.FogEnd
-	Lighting.ColorShift_Top = savedLightingState.ColorShift_Top
-	Lighting.ColorShift_Bottom = savedLightingState.ColorShift_Bottom
-	savedLightingState = nil
-end
-
-local function enableOwnerSky()
-	if rainbowSkyEnabled then return end
-	snapshotLighting()
-	rainbowSkyEnabled = true
-
-	if not overlaySky then
-		overlaySky = Instance.new("Sky")
-		overlaySky.Name = "SOS_OwnerRainbowSky"
-		overlaySky.SkyboxBk = "rbxassetid://159454299"
-		overlaySky.SkyboxDn = "rbxassetid://159454296"
-		overlaySky.SkyboxFt = "rbxassetid://159454293"
-		overlaySky.SkyboxLf = "rbxassetid://159454286"
-		overlaySky.SkyboxRt = "rbxassetid://159454300"
-		overlaySky.SkyboxUp = "rbxassetid://159454288"
-		overlaySky.StarCount = 3000
-		overlaySky.Parent = Lighting
-	end
-end
-
-local function disableOwnerSky()
-	if not rainbowSkyEnabled then return end
-	rainbowSkyEnabled = false
-	if overlaySky then
-		overlaySky:Destroy()
-		overlaySky = nil
-	end
-	restoreLighting()
-end
-
-local function applyRainbowGalaxyLighting(dt)
-	if not rainbowSkyEnabled then return end
-	rainbowTick = rainbowTick + dt
-	local t = rainbowTick
-
-	local r = (math.sin(t * 0.8) * 0.5 + 0.5)
-	local g = (math.sin(t * 0.8 + 2.094) * 0.5 + 0.5)
-	local b = (math.sin(t * 0.8 + 4.188) * 0.5 + 0.5)
-
-	Lighting.Brightness = 2.2
-	Lighting.ClockTime = (t * 0.4) % 24
-	Lighting.Ambient = Color3.new(r * 0.25, g * 0.25, b * 0.35)
-	Lighting.OutdoorAmbient = Color3.new(r * 0.15, g * 0.15, b * 0.25)
-	Lighting.FogColor = Color3.new(r * 0.25, g * 0.20, b * 0.30)
-	Lighting.FogStart = 0
-	Lighting.FogEnd = 1200
-	Lighting.ColorShift_Top = Color3.new(r * 0.35, g * 0.20, b * 0.45)
-	Lighting.ColorShift_Bottom = Color3.new(r * 0.15, g * 0.30, b * 0.20)
-end
-
-RunService.RenderStepped:Connect(function(dt)
-	applyRainbowGalaxyLighting(dt)
-end)
-
-local function anyOwnerPresent()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if isOwner(p) then
-			return true
-		end
-	end
+local function textHasAk(text)
+	if type(text) ~= "string" then return false end
+	if text == AK_MARKER_1 or text == AK_MARKER_2 then return true end
+	if text:find(AK_MARKER_1, 1, true) then return true end
+	if text:find(AK_MARKER_2, 1, true) then return true end
 	return false
 end
 
-local function reconcileOwnerPresence()
-	local present = anyOwnerPresent()
-	local localIsOwner = isOwner(LocalPlayer)
+--------------------------------------------------------------------
+-- CHAT LISTENERS (reply once per person per join)
+--------------------------------------------------------------------
+local function maybeReplyToActivation(uid)
+	if typeof(uid) ~= "number" then return end
+	if uid == LocalPlayer.UserId then return end
 
-	if present ~= lastOwnerPresence then
-		ownerSkyNotified = false
-		lastOwnerPresence = present
+	-- Warmup: ignore first activation globally
+	if not SeenFirstActivation then
+		SeenFirstActivation = true
+		return
 	end
 
-	if present then
-		if localIsOwner then
-			disableOwnerSky()
-			if not ownerSkyNotified then
-				ownerSkyNotified = true
-				notify("Owner Sky", "Rainbow galaxy sky is active for non-owners in this server.", 3)
-			end
-		else
-			enableOwnerSky()
-		end
-	else
-		disableOwnerSky()
+	-- Reply once per uid until they leave
+	if RepliedToActivationUserId[uid] then
+		return
 	end
+
+	RepliedToActivationUserId[uid] = true
+	trySendChat(SOS_REPLY_MARKER)
 end
 
---------------------------------------------------------------------
--- OWNER JOIN GLITCH
---------------------------------------------------------------------
-local function playOwnerJoinEffect()
-	if ownerEffectRunning then return end
-	ownerEffectRunning = true
-	ensureGui()
-
-	local overlay = Instance.new("Frame")
-	overlay.Name = "OwnerJoinGlitch"
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.2
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.ZIndex = 999
-	overlay.Parent = gui
-
-	local img = Instance.new("ImageLabel")
-	img.BackgroundTransparency = 1
-	img.Size = UDim2.new(1, 0, 1, 0)
-	img.Image = "rbxassetid://5028857084"
-	img.ImageTransparency = 0.55
-	img.ZIndex = 1000
-	img.Parent = overlay
-
-	local msg = Instance.new("TextLabel")
-	msg.BackgroundTransparency = 1
-	msg.AnchorPoint = Vector2.new(0.5, 0.5)
-	msg.Position = UDim2.new(0.5, 0, 0.5, 0)
-	msg.Size = UDim2.new(0, 520, 0, 70)
-	msg.Font = Enum.Font.GothamBlack
-	msg.TextSize = 28
-	msg.TextXAlignment = Enum.TextXAlignment.Center
-	msg.TextYAlignment = Enum.TextYAlignment.Center
-	msg.TextColor3 = Color3.fromRGB(255, 255, 80)
-	msg.Text = "The SOS Owner is here"
-	msg.ZIndex = 1001
-	msg.Parent = overlay
-
-	makeStroke(msg, 2, Color3.fromRGB(0, 0, 0), 0.25)
-
-	task.spawn(function()
-		local rng = Random.new()
-		for _ = 1, 18 do
-			img.ImageTransparency = rng:NextNumber(0.35, 0.75)
-			img.Position = UDim2.new(0, rng:NextInteger(-12, 12), 0, rng:NextInteger(-12, 12))
-			msg.Position = UDim2.new(0.5, rng:NextInteger(-10, 10), 0.5, rng:NextInteger(-6, 6))
-			msg.TextTransparency = rng:NextNumber(0, 0.25)
-			task.wait(rng:NextNumber(0.03, 0.06))
-		end
-	end)
-
-	task.delay(0.75, function()
-		for i = 1, 18 do
-			overlay.BackgroundTransparency = 0.2 + (i / 18) * 0.8
-			img.ImageTransparency = 0.55 + (i / 18) * 0.45
-			msg.TextTransparency = (i / 18)
-			task.wait(0.02)
-		end
-		overlay:Destroy()
-		ownerEffectRunning = false
-	end)
-end
-
---------------------------------------------------------------------
--- CHAT LISTENERS
---------------------------------------------------------------------
 local function hookChatListeners()
-	-- TextChatService listener
 	if TextChatService and TextChatService.MessageReceived then
 		TextChatService.MessageReceived:Connect(function(msg)
 			if not msg then return end
@@ -1178,23 +1156,7 @@ local function hookChatListeners()
 
 			if text == SOS_ACTIVATE_MARKER then
 				onSosActivated(uid)
-
-				-- Never reply to our own activation
-				if uid == LocalPlayer.UserId then
-					return
-				end
-
-				-- Ignore first activation we see; then only ONE reply total
-				if not SeenFirstActivation then
-					SeenFirstActivation = true
-					return
-				end
-
-				if not SentReplyOnce then
-					SentReplyOnce = true
-					trySendChat(SOS_REPLY_MARKER)
-				end
-
+				maybeReplyToActivation(uid)
 				return
 			end
 
@@ -1203,42 +1165,24 @@ local function hookChatListeners()
 				return
 			end
 
-			if text == SOS_JOINER_MARKER then
-				return
-			end
-
-			if text == AK_MARKER_1 or text == AK_MARKER_2 then
+			if textHasAk(text) then
 				onAkSeen(uid)
 				return
 			end
 		end)
 	end
 
-	-- Player.Chatted fallback
 	local function hookChatted(plr)
 		pcall(function()
 			plr.Chatted:Connect(function(message)
 				if message == SOS_ACTIVATE_MARKER then
 					onSosActivated(plr.UserId)
-
-					if plr.UserId == LocalPlayer.UserId then
-						return
-					end
-
-					if not SeenFirstActivation then
-						SeenFirstActivation = true
-						return
-					end
-
-					if not SentReplyOnce then
-						SentReplyOnce = true
-						trySendChat(SOS_REPLY_MARKER)
-					end
+					maybeReplyToActivation(plr.UserId)
 
 				elseif message == SOS_REPLY_MARKER then
 					onSosActivated(plr.UserId)
 
-				elseif message == AK_MARKER_1 or message == AK_MARKER_2 then
+				elseif textHasAk(message) then
 					onAkSeen(plr.UserId)
 				end
 			end)
@@ -1279,35 +1223,23 @@ local function init()
 	Players.PlayerAdded:Connect(function(plr)
 		hookPlayer(plr)
 
-		if isOwner(plr) then
-			task.defer(function()
-				playOwnerJoinEffect()
-				reconcileOwnerPresence()
-			end)
-			refreshAllTagsForPlayer(plr)
-		end
+		-- If they rejoin later, allow a new reply again
+		RepliedToActivationUserId[plr.UserId] = nil
+
+		task.defer(reconcileOwnerPresence)
 	end)
 
 	Players.PlayerRemoving:Connect(function(plr)
-		task.defer(function()
-			reconcileOwnerPresence()
-		end)
-
 		if plr then
 			clearRunTrails(plr)
+
+			-- Reset reply permission when they leave
+			RepliedToActivationUserId[plr.UserId] = nil
 		end
+		task.defer(reconcileOwnerPresence)
 	end)
 
 	hookChatListeners()
-
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if isOwner(plr) then
-			task.defer(function()
-				playOwnerJoinEffect()
-			end)
-			refreshAllTagsForPlayer(plr)
-		end
-	end
 
 	reconcileOwnerPresence()
 
@@ -1315,7 +1247,7 @@ local function init()
 	onSosActivated(LocalPlayer.UserId)
 	trySendChat(SOS_ACTIVATE_MARKER)
 
-	print("SOS Tags loaded. Activation is 𖺗. Reply is ¬. One reply max per session (after first activation seen).")
+	print("SOS Tags loaded. Activation 𖺗. Reply ¬ once per person per join. AK contains-match.")
 end
 
 task.delay(INIT_DELAY, init)
