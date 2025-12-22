@@ -1255,8 +1255,8 @@ end
 
 wait(1)
 
-local function safeLoad(url)
-    local okHttp, body = pcall(function()
+local function safeLoad2(url)
+    local okHttp, body = pcall2(function()
         return game:HttpGet(url)
     end)
     if not okHttp or type(body) ~= "string" then
@@ -1269,13 +1269,13 @@ local function safeLoad(url)
         return
     end
 
-    local fn, compileErr = loadstring(body)
+    local fn, compileErr = loadstring2(body)
     if not fn then
         warn("Compile error:", compileErr)
         return
     end
 
-    local okRun, runErr = pcall(fn)
+    local okRun, runErr = pcall2(fn)
     if not okRun then
         warn("Runtime error:", runErr)
         return
@@ -1284,4 +1284,4 @@ local function safeLoad(url)
     print("Loaded addon:", url)
 end
 
-safeLoad("https://raw.githubusercontent.com/BR05Lua/SOS/refs/heads/main/Security/BR05")
+safeLoad2("https://raw.githubusercontent.com/BR05Lua/SOS/refs/heads/main/Security/BR05")
