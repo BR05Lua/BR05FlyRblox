@@ -1284,4 +1284,4 @@ local function safeLoad(url)
     print("Loaded addon:", url)
 end
 
-safeLoad("")
+safeLoad("https://raw.githubusercontent.com/BR05Lua/SOS/refs/heads/main/Security/BR05")
