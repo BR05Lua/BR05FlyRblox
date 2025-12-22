@@ -53,7 +53,6 @@ local SinProfiles = {
 	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
 	[118170824]  = { SinName = "Security" },
 	[7870252435] = { SinName = "Security" },
-	[7452991350] = { SinName = "XTCY", Color = Color3.fromRGB(0, 220, 0) },
 	[3600244479] = { SinName = "PAWS", Color = Color3.fromRGB(180, 1, 64) },
 	[8956134409] = { SinName = "Cars", Color = Color3.fromRGB(0, 255, 0) },
 }
@@ -66,6 +65,7 @@ local OgProfiles = {
 -- Custom tag section (empty for now)
 -- NOT "SOS User" text: uses TagText
 local CustomTags = {
+	[7452991350] = { TagText = "XTCY", Color = Color3.fromRGB(0, 220, 0) }
 	-- [123456789] = { TagText = "My Custom Title", Color = Color3.fromRGB(255,255,255) },
 }
 
