@@ -2480,7 +2480,7 @@ local function createUI()
 	end
 
 ----------------------------------------------------------------
--- PLAYER TAB (full block, UPDATED: adds BHOP button + themed BHOP menu, no B-toggle)
+-- PLAYER TAB (full block, UPDATED: BHOP menu moved, draggable title bar, menu toggle, blocks flight while BHOP enabled)
 ----------------------------------------------------------------
 do
 	local header = makeText(playerScroll, "Player", 16, true)
@@ -2569,7 +2569,7 @@ do
 	end)
 
 	----------------------------------------------------------------
-	-- Look Mum im a Car (button hook)
+	-- Car Animations (button hook)
 	----------------------------------------------------------------
 	local carHeader = makeText(playerScroll, "Car Animations", 16, true)
 	carHeader.Size = UDim2.new(1, 0, 0, 22)
@@ -2595,7 +2595,7 @@ do
 	end)
 
 	----------------------------------------------------------------
-	-- BHOP (themed menu, opened via Player tab button, no B toggle)
+	-- BHOP (themed menu, opened via Player tab button, draggable, moved out the way, blocks flight while enabled)
 	----------------------------------------------------------------
 	local bhopHeader = makeText(playerScroll, "Bhop", 16, true)
 	bhopHeader.Size = UDim2.new(1, 0, 0, 22)
@@ -2645,6 +2645,26 @@ do
 	UserInputService.TextBoxFocusReleased:Connect(function()
 		isTyping = false
 	end)
+
+	local function bhopTryStopFlight()
+		if typeof(_G) ~= "table" then return end
+
+		_G.SOS_BlockFlight = bhopEnabled and true or false
+		_G.SOS_BlockFlightReason = bhopEnabled and "Bhop active" or nil
+
+		if bhopEnabled then
+			if typeof(_G.SOS_SetFlightEnabled) == "function" then
+				pcall(function()
+					_G.SOS_SetFlightEnabled(false, "Bhop active")
+				end)
+			end
+			if typeof(_G.SOS_StopFlight) == "function" then
+				pcall(function()
+					_G.SOS_StopFlight("Bhop active")
+				end)
+			end
+		end
+	end
 
 	local function bhopGetRefs()
 		bhopCharacter = LocalPlayer.Character
@@ -2754,6 +2774,7 @@ do
 
 		bhopEnabled = on and true or false
 		maxSpeedReached = 0
+		bhopTryStopFlight()
 
 		if bhopEnabled then
 			bhopOriginalWalkSpeed = bhopHumanoid.WalkSpeed
@@ -2766,7 +2787,7 @@ do
 			bhopBodyVel.MaxForce = Vector3.new(100000, 0, 100000)
 			bhopBodyVel.Velocity = Vector3.new(0, 0, 0)
 
-			notify("Bhop", "Enabled.", 2)
+			notify("Bhop", "Enabled. Flight blocked.", 2)
 		else
 			if bhopOriginalWalkSpeed ~= nil then
 				bhopHumanoid.WalkSpeed = bhopOriginalWalkSpeed
@@ -2784,6 +2805,10 @@ do
 	end
 
 	local function bhopPhysicsStep(dt)
+		if bhopEnabled then
+			bhopTryStopFlight()
+		end
+
 		if not bhopEnabled then
 			if bhopRoot then
 				local v = bhopRoot.Velocity
@@ -2792,6 +2817,7 @@ do
 			end
 			return
 		end
+
 		if not bhopRoot or not bhopHumanoid or not bhopBodyVel then return end
 
 		local wishDir = bhopGetWishDir()
@@ -2828,14 +2854,21 @@ do
 
 		bhopHandle = Instance.new("Frame")
 		bhopHandle.Name = "Handle"
-		bhopHandle.AnchorPoint = Vector2.new(0.5, 0)
-		bhopHandle.Position = UDim2.new(0.5, 0, 0, 90)
+		bhopHandle.AnchorPoint = Vector2.new(0, 0)
+		bhopHandle.Position = UDim2.new(1, -460, 0, 120)
 		bhopHandle.Size = UDim2.new(0, 420, 0, 42)
 		bhopHandle.BorderSizePixel = 0
 		bhopHandle.Parent = bhopGui
 		makeCorner(bhopHandle, 16)
 		makeGlass(bhopHandle)
 		makeStroke(bhopHandle, 2)
+
+		local titleBar = Instance.new("TextButton")
+		titleBar.Name = "TitleBar"
+		titleBar.BackgroundTransparency = 1
+		titleBar.Text = ""
+		titleBar.Size = UDim2.new(1, 0, 1, 0)
+		titleBar.Parent = bhopHandle
 
 		bhopArrow = Instance.new("TextButton")
 		bhopArrow.Name = "Arrow"
@@ -2861,14 +2894,59 @@ do
 
 		bhopFrame = Instance.new("Frame")
 		bhopFrame.Name = "Menu"
-		bhopFrame.AnchorPoint = Vector2.new(0.5, 0)
-		bhopFrame.Position = UDim2.new(0.5, 0, 0, 136)
+		bhopFrame.AnchorPoint = Vector2.new(0, 0)
+		bhopFrame.Position = UDim2.new(1, -460, 0, 166)
 		bhopFrame.Size = UDim2.new(0, 420, 0, 360)
 		bhopFrame.BorderSizePixel = 0
 		bhopFrame.Parent = bhopGui
 		makeCorner(bhopFrame, 16)
 		makeGlass(bhopFrame)
 		makeStroke(bhopFrame, 2)
+
+		local function clampToScreen()
+			local cam = workspace.CurrentCamera
+			if not cam then return end
+			local v = cam.ViewportSize
+			local x = bhopHandle.Position.X.Offset
+			local y = bhopHandle.Position.Y.Offset
+
+			x = math.clamp(x, 10 - (v.X), v.X - bhopHandle.Size.X.Offset - 10)
+			y = math.clamp(y, 10, v.Y - bhopHandle.Size.Y.Offset - 10)
+
+			bhopHandle.Position = UDim2.new(0, x, 0, y)
+			bhopFrame.Position = UDim2.new(0, x, 0, y + bhopHandle.Size.Y.Offset + 4)
+		end
+
+		local dragOn = false
+		local dragStart = nil
+		local startPos = nil
+
+		titleBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragOn = true
+				dragStart = input.Position
+				startPos = bhopHandle.Position
+			end
+		end)
+
+		titleBar.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragOn = false
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if not dragOn then return end
+			if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+			local delta = input.Position - dragStart
+
+			local newX = startPos.X.Offset + delta.X
+			local newY = startPos.Y.Offset + delta.Y
+
+			bhopHandle.Position = UDim2.new(0, newX, 0, newY)
+			bhopFrame.Position = UDim2.new(0, newX, 0, newY + bhopHandle.Size.Y.Offset + 4)
+			clampToScreen()
+		end)
 
 		local scroll = Instance.new("ScrollingFrame")
 		scroll.Name = "Scroll"
@@ -2903,11 +2981,11 @@ do
 		statusLay.Padding = UDim.new(0, 10)
 		statusLay.Parent = statusRow
 
-		local toggleBhopBtn = makeButton(statusRow, "Enable")
-		toggleBhopBtn.Size = UDim2.new(0, 140, 0, 40)
+		local enableBtn = makeButton(statusRow, "Enable")
+		enableBtn.Size = UDim2.new(0, 140, 0, 40)
 
-		local disableBhopBtn = makeButton(statusRow, "Disable")
-		disableBhopBtn.Size = UDim2.new(0, 140, 0, 40)
+		local disableBtn = makeButton(statusRow, "Disable")
+		disableBtn.Size = UDim2.new(0, 140, 0, 40)
 
 		bhopDebugLine = makeText(scroll, "Status: GROUNDED  |  Speed: 0.0  |  Max: 0.0", 13, true)
 		bhopDebugLine.Size = UDim2.new(1, 0, 0, 22)
@@ -2968,19 +3046,16 @@ do
 		makeCfgRow("Jump Power", "JUMP_POWER", 1, 10000, 1)
 		makeCfgRow("Stop Speed", "STOP_SPEED", 0, 10000, 1)
 
-		toggleBhopBtn.MouseButton1Click:Connect(function()
+		enableBtn.MouseButton1Click:Connect(function()
 			bhopSetEnabled(true)
 		end)
-		disableBhopBtn.MouseButton1Click:Connect(function()
+		disableBtn.MouseButton1Click:Connect(function()
 			bhopSetEnabled(false)
 		end)
 
-		local openPos = bhopFrame.Position
-		local closedPos = UDim2.new(openPos.X.Scale, openPos.X.Offset, openPos.Y.Scale, openPos.Y.Offset - (bhopFrame.Size.Y.Offset + 10))
-
-		local function setBhopMenu(open, instant)
-			bhopOpen = open
-			bhopArrow.Text = open and "˅" or "˄"
+		local function setMenuVisible(visible, instant)
+			bhopOpen = visible
+			bhopArrow.Text = visible and "˅" or "˄"
 
 			if bhopTween then
 				pcall(function() bhopTween:Cancel() end)
@@ -2988,23 +3063,19 @@ do
 			end
 
 			if instant then
-				bhopFrame.Visible = open
-				bhopFrame.Position = open and openPos or closedPos
-				bhopFrame.BackgroundTransparency = open and 0.18 or 1
+				bhopFrame.Visible = visible
+				bhopFrame.BackgroundTransparency = visible and 0.18 or 1
 				return
 			end
 
-			if open then
+			if visible then
 				bhopFrame.Visible = true
-				bhopFrame.Position = closedPos
 				bhopFrame.BackgroundTransparency = 1
-				bhopTween = tween(bhopFrame, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Position = openPos,
+				bhopTween = tween(bhopFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					BackgroundTransparency = 0.18
 				})
 			else
-				bhopTween = tween(bhopFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Position = closedPos,
+				bhopTween = tween(bhopFrame, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					BackgroundTransparency = 1
 				})
 				bhopTween.Completed:Connect(function()
@@ -3016,28 +3087,23 @@ do
 		end
 
 		bhopArrow.MouseButton1Click:Connect(function()
-			setBhopMenu(not bhopOpen, false)
+			setMenuVisible(not bhopOpen, false)
 		end)
 
-		setBhopMenu(false, true)
+		setMenuVisible(false, true)
+		clampToScreen()
 	end
 
 	bhopBtn.MouseButton1Click:Connect(function()
 		bhopBuildMenu()
-		if bhopHandle then
-			bhopHandle.Visible = true
-		end
-		if bhopFrame then
-			if not bhopOpen then
-				bhopArrow.Text = "˅"
-				bhopOpen = true
-				bhopFrame.Visible = true
-				bhopFrame.BackgroundTransparency = 0.18
-			else
-				bhopArrow.Text = "˄"
-				bhopOpen = false
-				bhopFrame.Visible = false
-			end
+		if not bhopGui then return end
+
+		local show = not (bhopHandle and bhopHandle.Visible)
+		if bhopHandle then bhopHandle.Visible = show end
+		if bhopFrame then bhopFrame.Visible = show and bhopOpen or false end
+
+		if not show then
+			bhopSetEnabled(false)
 		end
 	end)
 
