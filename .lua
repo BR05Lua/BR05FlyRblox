@@ -2480,94 +2480,784 @@ local function createUI()
 	end
 
 	----------------------------------------------------------------
-	-- PLAYER TAB (unchanged)
-	----------------------------------------------------------------
-	do
-		local header = makeText(playerScroll, "Player", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
+-- PLAYER TAB (with "Look Mum im a Car" toggle added)
+----------------------------------------------------------------
+do
+	local header = makeText(playerScroll, "Player", 16, true)
+	header.Size = UDim2.new(1, 0, 0, 22)
 
-		local info = makeText(playerScroll, "WalkSpeed changer. Reset uses the game's default speed for you.", 13, false)
-		info.Size = UDim2.new(1, 0, 0, 34)
-		info.TextColor3 = Color3.fromRGB(210, 210, 210)
+	local info = makeText(playerScroll, "WalkSpeed changer. Reset uses the game's default speed for you.", 13, false)
+	info.Size = UDim2.new(1, 0, 0, 34)
+	info.TextColor3 = Color3.fromRGB(210, 210, 210)
 
-		local row = Instance.new("Frame")
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 76)
-		row.Parent = playerScroll
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 76)
+	row.Parent = playerScroll
 
-		local speedLabel = makeText(row, "Speed: " .. tostring(playerSpeed or 16), 14, true)
-		speedLabel.Size = UDim2.new(1, 0, 0, 18)
+	local speedLabel = makeText(row, "Speed: " .. tostring(playerSpeed or 16), 14, true)
+	speedLabel.Size = UDim2.new(1, 0, 0, 18)
 
-		local sliderBg = Instance.new("Frame")
-		sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		sliderBg.BackgroundTransparency = 0.15
-		sliderBg.BorderSizePixel = 0
-		sliderBg.Position = UDim2.new(0, 0, 0, 26)
-		sliderBg.Size = UDim2.new(1, 0, 0, 10)
-		sliderBg.Parent = row
-		makeCorner(sliderBg, 999)
+	local sliderBg = Instance.new("Frame")
+	sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	sliderBg.BackgroundTransparency = 0.15
+	sliderBg.BorderSizePixel = 0
+	sliderBg.Position = UDim2.new(0, 0, 0, 26)
+	sliderBg.Size = UDim2.new(1, 0, 0, 10)
+	sliderBg.Parent = row
+	makeCorner(sliderBg, 999)
 
-		local sliderFill = Instance.new("Frame")
-		sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-		sliderFill.BorderSizePixel = 0
-		sliderFill.Size = UDim2.new(0, 0, 1, 0)
-		sliderFill.Parent = sliderBg
-		makeCorner(sliderFill, 999)
+	local sliderFill = Instance.new("Frame")
+	sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Size = UDim2.new(0, 0, 1, 0)
+	sliderFill.Parent = sliderBg
+	makeCorner(sliderFill, 999)
 
-		local knob = Instance.new("Frame")
-		knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-		knob.BorderSizePixel = 0
-		knob.Size = UDim2.new(0, 14, 0, 14)
-		knob.Parent = sliderBg
-		makeCorner(knob, 999)
+	local knob = Instance.new("Frame")
+	knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	knob.BorderSizePixel = 0
+	knob.Size = UDim2.new(0, 14, 0, 14)
+	knob.Parent = sliderBg
+	makeCorner(knob, 999)
 
-		local resetBtn = makeButton(row, "Reset")
-		resetBtn.Size = UDim2.new(0, 100, 0, 34)
-		resetBtn.AnchorPoint = Vector2.new(1, 0)
-		resetBtn.Position = UDim2.new(1, 0, 0, 42)
+	local resetBtn = makeButton(row, "Reset")
+	resetBtn.Size = UDim2.new(0, 100, 0, 34)
+	resetBtn.AnchorPoint = Vector2.new(1, 0)
+	resetBtn.Position = UDim2.new(1, 0, 0, 42)
 
-		local function setSpeedFromAlpha(a)
-			a = clamp01(a)
-			local s = 2 + (500 - 2) * a
-			playerSpeed = math.floor(s + 0.5)
-			speedLabel.Text = "Speed: " .. tostring(playerSpeed)
-			sliderFill.Size = UDim2.new(a, 0, 1, 0)
-			knob.Position = UDim2.new(a, -7, 0.5, -7)
-			applyPlayerSpeed()
-			scheduleSave()
+	local function setSpeedFromAlpha(a)
+		a = clamp01(a)
+		local s = 2 + (500 - 2) * a
+		playerSpeed = math.floor(s + 0.5)
+		speedLabel.Text = "Speed: " .. tostring(playerSpeed)
+		sliderFill.Size = UDim2.new(a, 0, 1, 0)
+		knob.Position = UDim2.new(a, -7, 0.5, -7)
+		applyPlayerSpeed()
+		scheduleSave()
+	end
+
+	local function alphaFromSpeed(s)
+		s = math.clamp(s, 2, 500)
+		return (s - 2) / (500 - 2)
+	end
+
+	setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
+
+	local dragging = false
+	sliderBg.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
 		end
-
-		local function alphaFromSpeed(s)
-			s = math.clamp(s, 2, 500)
-			return (s - 2) / (500 - 2)
+	end)
+	sliderBg.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
 		end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if not dragging then return end
+		if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+		local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+		setSpeedFromAlpha(a)
+	end)
 
+	resetBtn.MouseButton1Click:Connect(function()
+		resetPlayerSpeedToDefault()
 		setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
+		notify("Player", "Speed reset.", 2)
+	end)
 
-		local dragging = false
-		sliderBg.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
+	----------------------------------------------------------------
+	-- Look Mum im a Car toggle (opens/closes the Car UI script)
+	----------------------------------------------------------------
+	local carRow = Instance.new("Frame")
+	carRow.BackgroundTransparency = 1
+	carRow.Size = UDim2.new(1, 0, 0, 44)
+	carRow.Parent = playerScroll
+
+	local carBtn = makeButton(carRow, "Look Mum im a Car")
+	carBtn.Size = UDim2.new(0, 260, 0, 40)
+
+	local carStatus = makeText(carRow, "OFF", 14, true)
+	carStatus.Size = UDim2.new(1, -280, 1, 0)
+	carStatus.Position = UDim2.new(0, 280, 0, 0)
+	carStatus.TextXAlignment = Enum.TextXAlignment.Left
+	carStatus.TextColor3 = Color3.fromRGB(255, 120, 120)
+
+	local function runCarUiScript()
+		local Players = game:GetService("Players")
+		local StarterGui = game:GetService("StarterGui")
+		local UserInputService = game:GetService("UserInputService")
+		local RunService = game:GetService("RunService")
+		local CoreGui = game:GetService("CoreGui")
+
+		local UI_CONFIG = {
+			BUTTON_TEXT_SIZE = 12,
+			CORNER_RADIUS = UDim.new(0, 6),
+			MAIN_CORNER_RADIUS = UDim.new(0, 10),
+			ROTATION_SPEED = math.rad(30),
+			CAMERA_RADIUS = 6,
+			CAMERA_HEIGHT = 3,
+			SPEED_THRESHOLD = 0.1,
+			SPEED_DIVISOR = 16
+		}
+
+		local UI_COLORS = {
+			BACKGROUND = Color3.fromRGB(0, 0, 0),
+			TEXT = Color3.new(1, 1, 1),
+			CONFIRM_YES = Color3.fromRGB(200, 60, 60),
+			CONFIRM_NO = Color3.fromRGB(80, 80, 80)
+		}
+
+		local UI_ALPHA = {
+			MAIN_FRAME = 0.6,
+			TITLE_BAR = 0.5,
+			BUTTON = 0.7,
+			VIEWPORT = 0.8,
+			POPUP = 0.5,
+			POPUP_BUTTON = 0.6
+		}
+
+		local CAR_ANIMS = {
+			{ id = "76503595759461", mult = 1 },
+			{ id = "115245341767944", mult = 2 },
+			{ id = "127805235430271", mult = 4 },
+			{ id = "138003068153218", mult = 1 },
+			{ id = "116772752010894", mult = 1 },
+			{ id = "116625361313832", mult = 1 },
+			{ id = "81388785824317", mult = 1 },
+			{ id = "108747312576405", mult = 2 },
+			{ id = "113181071290859", mult = 1 },
+			{ id = "134681712937413", mult = 1 },
+			{ id = "115260380433565", mult = 2 },
+			{ id = "72382226286301", mult = 1 }
+		}
+
+		local state = {
+			currentIndex = 1,
+			activeTrack = nil,
+			activeConn = nil,
+			carstop = false,
+			minimized = false,
+			confirmationgui = false,
+			rotationAngle = 0
+		}
+
+		local ui = {}
+
+		local function getViewportScaleHelpers()
+			local vps = workspace.CurrentCamera.ViewportSize
+			return {
+				uScale = function(xScaleFactor, yScaleFactor)
+					return UDim2.new(0, vps.X * xScaleFactor, 0, vps.Y * (yScaleFactor or xScaleFactor))
+				end,
+				uPos = function(xPosFactor, yPosFactor)
+					return UDim2.new(0, vps.X * xPosFactor, 0, vps.Y * yPosFactor)
+				end,
+				uSize = function(xSizeFactor, ySizeFactor)
+					return UDim2.new(0, vps.X * xSizeFactor, 0, vps.Y * (ySizeFactor or xSizeFactor))
+				end
+			}
+		end
+
+		local function isLocalPlayerR15()
+			local lp = Players.LocalPlayer
+			if not lp then return false end
+			local ch = lp.Character
+			if not ch then return false end
+			local hum = ch:FindFirstChild("Humanoid")
+			if not hum then return false end
+			return hum.RigType == Enum.HumanoidRigType.R15
+		end
+
+		local function resetExistingUIAndSingleton()
+			local old = CoreGui:FindFirstChild("SillyCarUI")
+			if old then
+				old:Destroy()
+				task.wait(0.1)
 			end
-		end)
-		sliderBg.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
+			if getgenv and getgenv().CarExecuted then
+				getgenv().CarExecuted = false
+				task.wait(0.1)
 			end
-		end)
-		UserInputService.InputChanged:Connect(function(i)
-			if not dragging then return end
-			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
-			local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-			setSpeedFromAlpha(a)
+			if getgenv then
+				getgenv().CarExecuted = true
+			end
+			return true
+		end
+
+		local function makeCorner(cornerRadius)
+			local c = Instance.new("UICorner")
+			c.CornerRadius = cornerRadius or UI_CONFIG.CORNER_RADIUS
+			return c
+		end
+
+		local function createButton(parentGui, buttonSize, buttonPosition, buttonText, buttonTextSize)
+			local b = Instance.new("TextButton")
+			b.Parent = parentGui
+			b.Size = buttonSize
+			b.Position = buttonPosition
+			b.BackgroundColor3 = UI_COLORS.BACKGROUND
+			b.BackgroundTransparency = UI_ALPHA.BUTTON
+			b.BorderSizePixel = 0
+			b.TextColor3 = UI_COLORS.TEXT
+			b.Text = buttonText
+			b.Font = Enum.Font.Gotham
+			b.TextSize = buttonTextSize or UI_CONFIG.BUTTON_TEXT_SIZE
+			b.TextScaled = false
+			makeCorner():Clone().Parent = b
+			return b
+		end
+
+		local function createFrame(parentInstance, frameSize, framePosition, backgroundAlpha)
+			local f = Instance.new("Frame")
+			f.Parent = parentInstance
+			f.Size = frameSize
+			f.Position = framePosition
+			f.BackgroundColor3 = UI_COLORS.BACKGROUND
+			f.BackgroundTransparency = backgroundAlpha or 1
+			f.BorderSizePixel = 0
+			return f
+		end
+
+		local function createLabel(labelParent, labelSize, labelPosition, labelText, labelTextSize)
+			local l = Instance.new("TextLabel")
+			l.Parent = labelParent
+			l.Size = labelSize
+			l.Position = labelPosition
+			l.BackgroundTransparency = 1
+			l.Text = labelText
+			l.Font = Enum.Font.Gotham
+			l.TextColor3 = UI_COLORS.TEXT
+			l.TextSize = labelTextSize or UI_CONFIG.BUTTON_TEXT_SIZE
+			l.TextScaled = false
+			return l
+		end
+
+		local function attachHoverTransparency(tgt)
+			local bt = tgt.BackgroundTransparency
+			tgt.MouseEnter:Connect(function()
+				tgt.BackgroundTransparency = math.max(0, bt - 0.1)
+			end)
+			tgt.MouseLeave:Connect(function()
+				tgt.BackgroundTransparency = bt
+			end)
+		end
+
+		local function buildRootUI()
+			local vp = getViewportScaleHelpers()
+			ui.screenGui = Instance.new("ScreenGui")
+			ui.screenGui.Parent = CoreGui
+			ui.screenGui.ResetOnSpawn = false
+			ui.screenGui.Name = "SillyCarUI"
+
+			ui.mainFrame = createFrame(ui.screenGui, vp.uSize(0.2, 0.35), UDim2.new(0.5, -120, 0.5, -105), UI_ALPHA.MAIN_FRAME)
+			ui.mainFrame.Active = true
+			ui.mainFrame.Draggable = true
+			makeCorner(UI_CONFIG.MAIN_CORNER_RADIUS).Parent = ui.mainFrame
+			return vp
+		end
+
+		local function buildTitleBar()
+			ui.titleBar = createFrame(ui.mainFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 0), UI_ALPHA.TITLE_BAR)
+			makeCorner(UI_CONFIG.MAIN_CORNER_RADIUS).Parent = ui.titleBar
+
+			ui.titleText = createLabel(ui.titleBar, UDim2.new(1, -60, 1, 0), UDim2.new(0, 30, 0, 0), "CAR anims", UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.titleText.TextXAlignment = Enum.TextXAlignment.Center
+
+			ui.minBtn = createButton(ui.titleBar, UDim2.new(0, 20, 0, 20), UDim2.new(1, -45, 0, 5), "–", UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.closeBtn = createButton(ui.titleBar, UDim2.new(0, 20, 0, 20), UDim2.new(1, -22, 0, 5), "✕", UI_CONFIG.BUTTON_TEXT_SIZE)
+		end
+
+		local function buildAnimHeader()
+			ui.contentFrame = createFrame(ui.mainFrame, UDim2.new(1, -20, 1, -45), UDim2.new(0, 10, 0, 35), 1)
+			ui.animNameFrame = createFrame(ui.contentFrame, UDim2.new(1, 0, 0, 25), UDim2.new(0, 0, 0, 0), UI_ALPHA.BUTTON)
+			makeCorner().Parent = ui.animNameFrame
+
+			ui.animNameText = createLabel(ui.animNameFrame, UDim2.new(1, -10, 1, 0), UDim2.new(0, 5, 0, 0), "Animation " .. state.currentIndex .. "/" .. #CAR_ANIMS, UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.animNameText.TextXAlignment = Enum.TextXAlignment.Center
+		end
+
+		local function buildViewport()
+			ui.viewportContainer = createFrame(ui.contentFrame, UDim2.new(1, 0, 1, -105), UDim2.new(0, 0, 0, 30), UI_ALPHA.BUTTON)
+			makeCorner(UDim.new(0, 8)).Parent = ui.viewportContainer
+
+			ui.viewport = Instance.new("ViewportFrame")
+			ui.viewport.Parent = ui.viewportContainer
+			ui.viewport.Size = UDim2.new(1, -6, 1, -6)
+			ui.viewport.Position = UDim2.new(0, 3, 0, 3)
+			ui.viewport.BackgroundColor3 = UI_COLORS.BACKGROUND
+			ui.viewport.BackgroundTransparency = UI_ALPHA.VIEWPORT
+			ui.viewport.BorderSizePixel = 0
+			makeCorner().Parent = ui.viewport
+
+			ui.camera = Instance.new("Camera")
+			ui.camera.CameraType = Enum.CameraType.Scriptable
+			ui.viewport.CurrentCamera = ui.camera
+		end
+
+		local function buildNavControls()
+			ui.navContainer = createFrame(ui.contentFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 1, -75), 1)
+			ui.prevBtn = createButton(ui.navContainer, UDim2.new(0.48, 0, 1, 0), UDim2.new(0, 0, 0, 0), "◀ Previous", UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.nextBtn = createButton(ui.navContainer, UDim2.new(0.48, 0, 1, 0), UDim2.new(0.52, 0, 0, 0), "Next ▶", UI_CONFIG.BUTTON_TEXT_SIZE)
+		end
+
+		local function buildPlayStopControls()
+			ui.controlContainer = createFrame(ui.contentFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 1, -40), 1)
+			ui.playBtn = createButton(ui.controlContainer, UDim2.new(0.48, 0, 1, 0), UDim2.new(0, 0, 0, 0), "Play Car", UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.playBtn.Font = Enum.Font.GothamBold
+
+			ui.stopBtn = createButton(ui.controlContainer, UDim2.new(0.48, 0, 1, 0), UDim2.new(0.52, 0, 0, 0), "Stop Car", UI_CONFIG.BUTTON_TEXT_SIZE)
+			ui.stopBtn.Font = Enum.Font.GothamBold
+		end
+
+		local function applyButtonHoverEffects()
+			for _, b in ipairs({ ui.prevBtn, ui.nextBtn, ui.playBtn, ui.stopBtn, ui.minBtn, ui.closeBtn }) do
+				attachHoverTransparency(b)
+			end
+		end
+
+		local function ensureModelPrimaryPart(m)
+			if not m or not m.Parent then return false end
+			if m.PrimaryPart then return true end
+			local pp = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChildWhichIsA("BasePart")
+			if pp then
+				m.PrimaryPart = pp
+				return true
+			end
+			return false
+		end
+
+		local function createAndSetupDummyModels()
+			local ok, model = pcall(function()
+				return Players:CreateHumanoidModelFromUserId(9160453052)
+			end)
+			if not ok or not model then
+				local ok2, model2 = pcall(function()
+					return Players:CreateHumanoidModelFromUserId(1)
+				end)
+				model = model2
+				if not ok2 or not model then
+					return false
+				end
+			end
+
+			ui.realDummy = model
+			ui.realDummy.Parent = workspace
+
+			local attempts = 0
+			while attempts < 100 and not ensureModelPrimaryPart(ui.realDummy) do
+				task.wait(0.05)
+				attempts += 1
+			end
+			if not ui.realDummy.PrimaryPart then
+				return false
+			end
+
+			pcall(function()
+				ui.realDummy:SetPrimaryPartCFrame(CFrame.new(0, 10000, 0))
+			end)
+
+			ui.vpDummy = ui.realDummy:Clone()
+			ensureModelPrimaryPart(ui.vpDummy)
+			ui.vpDummy.Parent = ui.viewport
+
+			if ui.vpDummy.PrimaryPart and ui.realDummy.PrimaryPart then
+				ui.vpDummy:SetPrimaryPartCFrame(ui.realDummy.PrimaryPart.CFrame)
+			end
+
+			for _, p in pairs(ui.realDummy:GetDescendants()) do
+				if p:IsA("BasePart") then
+					p.Transparency = 1
+					p.CanCollide = false
+				end
+			end
+
+			local hrp = ui.vpDummy:FindFirstChild("HumanoidRootPart")
+			if hrp then hrp.Transparency = 1 end
+
+			for _, p in pairs(ui.vpDummy:GetDescendants()) do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+
+			return true
+		end
+
+		local function startViewportSyncLoop()
+			local renderConn
+			renderConn = RunService.RenderStepped:Connect(function(dt)
+				if state.carstop then
+					renderConn:Disconnect()
+					return
+				end
+				if not ui.realDummy or not ui.realDummy.Parent or not ui.vpDummy or not ui.vpDummy.Parent then
+					return
+				end
+
+				pcall(function()
+					for _, rp in pairs(ui.realDummy:GetDescendants()) do
+						if rp:IsA("BasePart") then
+							local vpPart = ui.vpDummy:FindFirstChild(rp.Name, true)
+							if vpPart and vpPart:IsA("BasePart") then
+								vpPart.CFrame = rp.CFrame
+							end
+						end
+					end
+				end)
+
+				state.rotationAngle = state.rotationAngle + UI_CONFIG.ROTATION_SPEED * dt
+				local ox = math.sin(state.rotationAngle) * UI_CONFIG.CAMERA_RADIUS
+				local oz = math.cos(state.rotationAngle) * UI_CONFIG.CAMERA_RADIUS
+				local focus = ui.vpDummy.PrimaryPart and ui.vpDummy.PrimaryPart.Position or Vector3.new(0, 1, 0)
+
+				pcall(function()
+					ui.camera.CFrame = CFrame.new(focus + Vector3.new(ox, UI_CONFIG.CAMERA_HEIGHT, oz), focus)
+				end)
+			end)
+		end
+
+		local function setupDummyAnimator()
+			if not ui.realDummy then return false end
+			ui.humanoid = ui.realDummy:FindFirstChildWhichIsA("Humanoid")
+			if ui.humanoid then
+				ui.animator = ui.humanoid:FindFirstChildOfClass("Animator")
+				if not ui.animator then
+					ui.animator = Instance.new("Animator")
+					ui.animator.Parent = ui.humanoid
+				end
+			end
+			ui.previewAnimTrack = nil
+			return ui.humanoid and ui.animator
+		end
+
+		local function previewSelectedAnimation(animIndex)
+			if not ui.animator then return end
+
+			if ui.previewAnimTrack then
+				pcall(function()
+					ui.previewAnimTrack:Stop()
+					ui.previewAnimTrack:Destroy()
+				end)
+				ui.previewAnimTrack = nil
+			end
+
+			local ok, track = pcall(function()
+				local a = Instance.new("Animation")
+				a.AnimationId = "rbxassetid://" .. CAR_ANIMS[animIndex].id
+				local tr = ui.animator:LoadAnimation(a)
+				tr.Priority = Enum.AnimationPriority.Action
+				tr.Looped = true
+				tr:Play()
+				tr:AdjustWeight(1)
+				tr:AdjustSpeed(1)
+				return tr
+			end)
+
+			if ok and track then
+				ui.previewAnimTrack = track
+			end
+
+			if ui.animNameText then
+				ui.animNameText.Text = "Animation " .. state.currentIndex .. "/" .. #CAR_ANIMS
+			end
+		end
+
+		local function stopActiveCarAnimation()
+			if state.activeTrack then
+				pcall(function()
+					state.activeTrack:Stop()
+					state.activeTrack:Destroy()
+				end)
+				state.activeTrack = nil
+			end
+			if state.activeConn then
+				pcall(function()
+					state.activeConn:Disconnect()
+				end)
+				state.activeConn = nil
+			end
+		end
+
+		local function playCarAnimationOnCharacter(char)
+			if not char or not char.Parent then return end
+			stopActiveCarAnimation()
+
+			local hum = char:FindFirstChild("Humanoid")
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if not hum or not hrp then return end
+
+			local ok, tr = pcall(function()
+				local a = Instance.new("Animation")
+				a.AnimationId = "rbxassetid://" .. CAR_ANIMS[state.currentIndex].id
+				local t = hum:LoadAnimation(a)
+				t.Priority = Enum.AnimationPriority.Action
+				t:Play()
+				t.Looped = true
+				t:AdjustWeight(1)
+				return t
+			end)
+			if not ok or not tr then return end
+
+			state.activeTrack = tr
+
+			pcall(function()
+				workspace.CurrentCamera.CameraSubject = char:FindFirstChild("Head") or hum
+			end)
+
+			local lastPos = hrp.Position
+			local lastTime = os.clock()
+
+			state.activeConn = RunService.Heartbeat:Connect(function()
+				if state.carstop or not hrp.Parent or not tr.IsPlaying then return end
+
+				local pos = hrp.Position
+				local now = os.clock()
+				local elapsed = now - lastTime
+
+				if elapsed > 0 then
+					local vel = (pos - lastPos) / elapsed
+					local spd = vel.Magnitude
+
+					if spd > UI_CONFIG.SPEED_THRESHOLD then
+						local forwardDot = hrp.CFrame.LookVector:Dot(vel.Unit)
+						local calc = (spd / UI_CONFIG.SPEED_DIVISOR) * CAR_ANIMS[state.currentIndex].mult * (forwardDot >= 0 and 1 or -1)
+						pcall(function() tr:AdjustSpeed(calc) end)
+					else
+						pcall(function() tr:AdjustSpeed(0) end)
+					end
+				end
+
+				lastPos = pos
+				lastTime = now
+			end)
+		end
+
+		local function showStopConfirmationDialog(onDecision)
+			if state.confirmationgui or not ui.screenGui then return end
+			state.confirmationgui = true
+
+			local confirm = createFrame(ui.screenGui, UDim2.new(0, 250, 0, 120), UDim2.new(0.5, -125, 0.5, -60), UI_ALPHA.POPUP)
+			confirm.Name = "ConfirmationDialog"
+			makeCorner(UI_CONFIG.MAIN_CORNER_RADIUS).Parent = confirm
+
+			local msg = createLabel(confirm, UDim2.new(1, -20, 0, 50), UDim2.new(0, 10, 0, 10),
+				"Are you sure you want to close?\n(This will stop the current animation)", 14)
+			msg.TextWrapped = true
+
+			local btnRow = createFrame(confirm, UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 1, -45), 1)
+			local yes = createButton(btnRow, UDim2.new(0.4, 0, 1, 0), UDim2.new(0, 0, 0, 0), "Yes", UI_CONFIG.BUTTON_TEXT_SIZE)
+			yes.BackgroundColor3 = UI_COLORS.CONFIRM_YES
+			yes.BackgroundTransparency = UI_ALPHA.POPUP_BUTTON
+			yes.Font = Enum.Font.GothamBold
+
+			local no = createButton(btnRow, UDim2.new(0.4, 0, 1, 0), UDim2.new(0.6, 0, 0, 0), "No", UI_CONFIG.BUTTON_TEXT_SIZE)
+			no.BackgroundColor3 = UI_COLORS.CONFIRM_NO
+			no.BackgroundTransparency = UI_ALPHA.POPUP_BUTTON
+			no.Font = Enum.Font.GothamBold
+
+			attachHoverTransparency(yes)
+			attachHoverTransparency(no)
+
+			yes.MouseButton1Click:Connect(function()
+				confirm:Destroy()
+				onDecision(true)
+				state.confirmationgui = false
+			end)
+
+			no.MouseButton1Click:Connect(function()
+				confirm:Destroy()
+				onDecision(false)
+				state.confirmationgui = false
+			end)
+		end
+
+		local function setupKeyboardShortcuts()
+			UserInputService.InputBegan:Connect(function(input, gameProcessed)
+				if gameProcessed or not ui.screenGui or state.carstop then return end
+
+				if input.KeyCode == Enum.KeyCode.K then
+					ui.screenGui.Enabled = not ui.screenGui.Enabled
+				elseif input.KeyCode == Enum.KeyCode.Left then
+					state.currentIndex = (state.currentIndex - 2) % #CAR_ANIMS + 1
+					previewSelectedAnimation(state.currentIndex)
+				elseif input.KeyCode == Enum.KeyCode.Right then
+					state.currentIndex = state.currentIndex % #CAR_ANIMS + 1
+					previewSelectedAnimation(state.currentIndex)
+				elseif (input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter) and Players.LocalPlayer.Character then
+					playCarAnimationOnCharacter(Players.LocalPlayer.Character)
+				end
+			end)
+		end
+
+		local function wireUIButtonCallbacks()
+			ui.prevBtn.MouseButton1Click:Connect(function()
+				state.currentIndex = (state.currentIndex - 2) % #CAR_ANIMS + 1
+				previewSelectedAnimation(state.currentIndex)
+			end)
+
+			ui.nextBtn.MouseButton1Click:Connect(function()
+				state.currentIndex = state.currentIndex % #CAR_ANIMS + 1
+				previewSelectedAnimation(state.currentIndex)
+			end)
+
+			ui.playBtn.MouseButton1Click:Connect(function()
+				if Players.LocalPlayer.Character then
+					playCarAnimationOnCharacter(Players.LocalPlayer.Character)
+				end
+			end)
+
+			ui.stopBtn.MouseButton1Click:Connect(function()
+				stopActiveCarAnimation()
+			end)
+
+			ui.minBtn.MouseButton1Click:Connect(function()
+				state.minimized = not state.minimized
+				if state.minimized then
+					ui.mainFrame.Size = UDim2.new(0, ui.mainFrame.AbsoluteSize.X, 0, 30)
+					ui.contentFrame.Visible = false
+				else
+					local vp = getViewportScaleHelpers()
+					ui.mainFrame.Size = vp.uSize(0.2, 0.35)
+					ui.contentFrame.Visible = true
+				end
+			end)
+
+			ui.closeBtn.MouseButton1Click:Connect(function()
+				showStopConfirmationDialog(function(didConfirm)
+					if didConfirm then
+						state.carstop = true
+						stopActiveCarAnimation()
+						if ui.realDummy then ui.realDummy:Destroy() end
+						if ui.screenGui then ui.screenGui:Destroy() end
+						if getgenv then getgenv().CarExecuted = false end
+					end
+				end)
+			end)
+		end
+
+		local function setupRespawnAutoReplay()
+			local lp = Players.LocalPlayer
+			if not lp then return end
+			lp.CharacterAdded:Connect(function(newChar)
+				if state.carstop then return end
+				local hum = newChar:WaitForChild("Humanoid", 10)
+				local hrp = newChar:WaitForChild("HumanoidRootPart", 10)
+				if not hum or not hrp then return end
+				task.wait(2)
+				if newChar.Parent and not state.carstop then
+					playCarAnimationOnCharacter(newChar)
+				end
+			end)
+		end
+
+		pcall(function()
+			StarterGui:SetCore("SendNotification", { Title = "Car Animations", Text = "Loading script...", Duration = 3 })
 		end)
 
-		resetBtn.MouseButton1Click:Connect(function()
-			resetPlayerSpeedToDefault()
-			setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
-			notify("Player", "Speed reset.", 2)
+		if not isLocalPlayerR15() then
+			pcall(function()
+				StarterGui:SetCore("SendNotification", { Title = "Car Animations", Text = "This script only works with R15 characters!", Duration = 5 })
+			end)
+			return
+		end
+
+		if not resetExistingUIAndSingleton() then
+			pcall(function()
+				StarterGui:SetCore("SendNotification", { Title = "Car Animations", Text = "Script is already running!", Duration = 3 })
+			end)
+			return
+		end
+
+		local okUi = pcall(function()
+			buildRootUI()
+			buildTitleBar()
+			buildAnimHeader()
+			buildViewport()
+			buildNavControls()
+			buildPlayStopControls()
+			applyButtonHoverEffects()
+		end)
+
+		if not okUi then
+			if getgenv then getgenv().CarExecuted = false end
+			return
+		end
+
+		task.spawn(function()
+			local setupOk = false
+			for _ = 1, 3 do
+				setupOk = createAndSetupDummyModels()
+				if setupOk then break end
+				task.wait(1)
+			end
+
+			if not setupOk then
+				if ui.screenGui then ui.screenGui:Destroy() end
+				if getgenv then getgenv().CarExecuted = false end
+				pcall(function()
+					StarterGui:SetCore("SendNotification", { Title = "Car Animations", Text = "Failed to load dummy model. Try again.", Duration = 5 })
+				end)
+				return
+			end
+
+			startViewportSyncLoop()
+			if not setupDummyAnimator() then
+				return
+			end
+
+			previewSelectedAnimation(state.currentIndex)
+			setupKeyboardShortcuts()
+			wireUIButtonCallbacks()
+			setupRespawnAutoReplay()
+
+			pcall(function()
+				StarterGui:SetCore("SendNotification", { Title = "Car Animations", Text = "Script loaded! Press K to toggle UI", Duration = 5 })
+			end)
 		end)
 	end
+
+	local function stopCarUiScript()
+		local coreGui = game:GetService("CoreGui")
+		local old = coreGui:FindFirstChild("SillyCarUI")
+		if old then
+			old:Destroy()
+		end
+		if getgenv then
+			getgenv().CarExecuted = false
+		end
+	end
+
+	local function isCarRunning()
+		local coreGui = game:GetService("CoreGui")
+		return coreGui:FindFirstChild("SillyCarUI") ~= nil
+	end
+
+	local function refreshCarStatus()
+		if isCarRunning() then
+			carStatus.Text = "ON"
+			carStatus.TextColor3 = Color3.fromRGB(120, 255, 120)
+		else
+			carStatus.Text = "OFF"
+			carStatus.TextColor3 = Color3.fromRGB(255, 120, 120)
+		end
+	end
+
+	carBtn.MouseButton1Click:Connect(function()
+		if isCarRunning() then
+			stopCarUiScript()
+			notify("Car", "Stopped.", 2)
+		else
+			runCarUiScript()
+			notify("Car", "Started. Press K to toggle the car UI.", 3)
+		end
+		refreshCarStatus()
+	end)
+
+	refreshCarStatus()
+end
 
 	----------------------------------------------------------------
 	-- CAMERA TAB (unchanged)
