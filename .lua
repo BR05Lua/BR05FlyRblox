@@ -2480,349 +2480,253 @@ local function createUI()
 	end
 
 	----------------------------------------------------------------
-	-- PLAYER TAB (WalkSpeed + Look Mum im a Car pop out)
-	----------------------------------------------------------------
-	do
-		local header = makeText(playerScroll, "Player", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
+-- PLAYER TAB (full block, includes original + First Person Arms + Car button hook)
+----------------------------------------------------------------
+do
+	local header = makeText(playerScroll, "Player", 16, true)
+	header.Size = UDim2.new(1, 0, 0, 22)
 
-		local info = makeText(playerScroll, "WalkSpeed changer. Reset uses the game's default speed for you.", 13, false)
-		info.Size = UDim2.new(1, 0, 0, 34)
-		info.TextColor3 = Color3.fromRGB(210, 210, 210)
+	local info = makeText(playerScroll, "WalkSpeed changer. Reset uses the game's default speed for you.", 13, false)
+	info.Size = UDim2.new(1, 0, 0, 34)
+	info.TextColor3 = Color3.fromRGB(210, 210, 210)
 
-		------------------------------------------------------------
-		-- WalkSpeed UI (original behaviour)
-		------------------------------------------------------------
-		local row = Instance.new("Frame")
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 76)
-		row.Parent = playerScroll
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 76)
+	row.Parent = playerScroll
 
-		local speedLabel = makeText(row, "Speed: " .. tostring(playerSpeed or 16), 14, true)
-		speedLabel.Size = UDim2.new(1, 0, 0, 18)
+	local speedLabel = makeText(row, "Speed: " .. tostring(playerSpeed or 16), 14, true)
+	speedLabel.Size = UDim2.new(1, 0, 0, 18)
 
-		local sliderBg = Instance.new("Frame")
-		sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		sliderBg.BackgroundTransparency = 0.15
-		sliderBg.BorderSizePixel = 0
-		sliderBg.Position = UDim2.new(0, 0, 0, 26)
-		sliderBg.Size = UDim2.new(1, 0, 0, 10)
-		sliderBg.Parent = row
-		makeCorner(sliderBg, 999)
+	local sliderBg = Instance.new("Frame")
+	sliderBg.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	sliderBg.BackgroundTransparency = 0.15
+	sliderBg.BorderSizePixel = 0
+	sliderBg.Position = UDim2.new(0, 0, 0, 26)
+	sliderBg.Size = UDim2.new(1, 0, 0, 10)
+	sliderBg.Parent = row
+	makeCorner(sliderBg, 999)
 
-		local sliderFill = Instance.new("Frame")
-		sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-		sliderFill.BorderSizePixel = 0
-		sliderFill.Size = UDim2.new(0, 0, 1, 0)
-		sliderFill.Parent = sliderBg
-		makeCorner(sliderFill, 999)
+	local sliderFill = Instance.new("Frame")
+	sliderFill.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Size = UDim2.new(0, 0, 1, 0)
+	sliderFill.Parent = sliderBg
+	makeCorner(sliderFill, 999)
 
-		local knob = Instance.new("Frame")
-		knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-		knob.BorderSizePixel = 0
-		knob.Size = UDim2.new(0, 14, 0, 14)
-		knob.Parent = sliderBg
-		makeCorner(knob, 999)
+	local knob = Instance.new("Frame")
+	knob.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	knob.BorderSizePixel = 0
+	knob.Size = UDim2.new(0, 14, 0, 14)
+	knob.Parent = sliderBg
+	makeCorner(knob, 999)
 
-		local resetBtn = makeButton(row, "Reset")
-		resetBtn.Size = UDim2.new(0, 100, 0, 34)
-		resetBtn.AnchorPoint = Vector2.new(1, 0)
-		resetBtn.Position = UDim2.new(1, 0, 0, 42)
+	local resetBtn = makeButton(row, "Reset")
+	resetBtn.Size = UDim2.new(0, 100, 0, 34)
+	resetBtn.AnchorPoint = Vector2.new(1, 0)
+	resetBtn.Position = UDim2.new(1, 0, 0, 42)
 
-		local function setSpeedFromAlpha(a)
-			a = clamp01(a)
-			local s = 2 + (500 - 2) * a
-			playerSpeed = math.floor(s + 0.5)
-			speedLabel.Text = "Speed: " .. tostring(playerSpeed)
-			sliderFill.Size = UDim2.new(a, 0, 1, 0)
-			knob.Position = UDim2.new(a, -7, 0.5, -7)
-			applyPlayerSpeed()
-			scheduleSave()
+	local function setSpeedFromAlpha(a)
+		a = clamp01(a)
+		local s = 2 + (500 - 2) * a
+		playerSpeed = math.floor(s + 0.5)
+		speedLabel.Text = "Speed: " .. tostring(playerSpeed)
+		sliderFill.Size = UDim2.new(a, 0, 1, 0)
+		knob.Position = UDim2.new(a, -7, 0.5, -7)
+		applyPlayerSpeed()
+		scheduleSave()
+	end
+
+	local function alphaFromSpeed(s)
+		s = math.clamp(s, 2, 500)
+		return (s - 2) / (500 - 2)
+	end
+
+	setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
+
+	local dragging = false
+	sliderBg.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
 		end
-
-		local function alphaFromSpeed(s)
-			s = math.clamp(s, 2, 500)
-			return (s - 2) / (500 - 2)
+	end)
+	sliderBg.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
 		end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if not dragging then return end
+		if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+		local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+		setSpeedFromAlpha(a)
+	end)
 
+	resetBtn.MouseButton1Click:Connect(function()
+		resetPlayerSpeedToDefault()
 		setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
+		notify("Player", "Speed reset.", 2)
+	end)
 
-		local dragging = false
-		sliderBg.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
+	----------------------------------------------------------------
+	-- Look Mum im a Car (button hook)
+	-- This expects you to paste the Car UI script into the function below (once),
+	-- or expose a global function named _G.SOS_StartCarUI elsewhere.
+	----------------------------------------------------------------
+	local carHeader = makeText(playerScroll, "Car Animations", 16, true)
+	carHeader.Size = UDim2.new(1, 0, 0, 22)
+
+	local carHint = makeText(playerScroll, "Press Stop before changing animations.", 13, false)
+	carHint.Size = UDim2.new(1, 0, 0, 34)
+	carHint.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+	local carBtn = makeButton(playerScroll, "Look Mum im a Car")
+	carBtn.Size = UDim2.new(0, 240, 0, 40)
+
+	-- Optional: paste the full Car UI script into this function body if you want it self-contained.
+	local function startCarUI()
+		if typeof(_G) == "table" and typeof(_G.SOS_StartCarUI) == "function" then
+			_G.SOS_StartCarUI()
+			return true
+		end
+		notify("Car Animations", "Car UI not wired yet. Tell me and I will embed it here.", 4)
+		return false
+	end
+
+	carBtn.MouseButton1Click:Connect(function()
+		startCarUI()
+	end)
+
+	----------------------------------------------------------------
+	-- First Person Arms (show arms + arm accessories)
+	----------------------------------------------------------------
+	local armsHeader = makeText(playerScroll, "First Person Arms", 16, true)
+	armsHeader.Size = UDim2.new(1, 0, 0, 22)
+
+	local armsHint = makeText(playerScroll, "Forces your arms (and accessories attached to them) to stay visible in first person.", 13, false)
+	armsHint.Size = UDim2.new(1, 0, 0, 34)
+	armsHint.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+	local armsBtn = makeButton(playerScroll, "Arms: OFF")
+	armsBtn.Size = UDim2.new(0, 200, 0, 40)
+
+	local armsState = {
+		enabled = false,
+		conn = nil,
+	}
+
+	local function isArmPartName(n)
+		-- R15
+		if n == "LeftUpperArm" or n == "LeftLowerArm" or n == "LeftHand" then return true end
+		if n == "RightUpperArm" or n == "RightLowerArm" or n == "RightHand" then return true end
+		-- R6
+		if n == "Left Arm" or n == "Right Arm" then return true end
+		return false
+	end
+
+	local function collectArmParts(char)
+		local parts = {}
+		if not char then return parts end
+		for _, d in ipairs(char:GetDescendants()) do
+			if d:IsA("BasePart") and isArmPartName(d.Name) then
+				table.insert(parts, d)
 			end
-		end)
-		sliderBg.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(i)
-			if not dragging then return end
-			if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
-			local a = (i.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-			setSpeedFromAlpha(a)
-		end)
+		end
+		return parts
+	end
 
-		resetBtn.MouseButton1Click:Connect(function()
-			resetPlayerSpeedToDefault()
-			setSpeedFromAlpha(alphaFromSpeed(playerSpeed or 16))
-			notify("Player", "Speed reset.", 2)
-		end)
+	local function accessoryAttachedToArms(accessory, armPartsSet)
+		if not accessory or not accessory:IsA("Accessory") then return false end
+		local handle = accessory:FindFirstChild("Handle")
+		if not handle or not handle:IsA("BasePart") then return false end
 
-		------------------------------------------------------------
-		-- Car pop out UI (not saved, not attached to SOS HUD)
-		------------------------------------------------------------
-		local carButton = makeButton(playerScroll, "Look Mum im a Car")
-		carButton.Size = UDim2.new(0, 240, 0, 40)
-
-		local carGui = nil
-		local carWindow = nil
-		local carState = {
-			currentIndex = 1,
-			activeTrack = nil,
-			activeConn = nil,
-			stopped = false
-		}
-
-		local CAR_ANIMS = {
-			{ id = "76503595759461", mult = 1 },
-			{ id = "115245341767944", mult = 2 },
-			{ id = "127805235430271", mult = 4 },
-			{ id = "138003068153218", mult = 1 },
-			{ id = "116772752010894", mult = 1 },
-			{ id = "116625361313832", mult = 1 },
-			{ id = "81388785824317", mult = 1 },
-			{ id = "108747312576405", mult = 2 },
-			{ id = "113181071290859", mult = 1 },
-			{ id = "134681712937413", mult = 1 },
-			{ id = "115260380433565", mult = 2 },
-			{ id = "72382226286301", mult = 1 },
-		}
-
-		local function carStopActive()
-			if carState.activeTrack then
-				pcall(function()
-					carState.activeTrack:Stop()
-					carState.activeTrack:Destroy()
-				end)
-				carState.activeTrack = nil
-			end
-			if carState.activeConn then
-				pcall(function()
-					carState.activeConn:Disconnect()
-				end)
-				carState.activeConn = nil
-			end
-
-			if humanoid and camera then
-				pcall(function()
-					camera.CameraSubject = humanoid
-				end)
+		for _, w in ipairs(handle:GetDescendants()) do
+			if w:IsA("Weld") or w:IsA("Motor6D") then
+				local p0 = w.Part0
+				local p1 = w.Part1
+				if (p0 and armPartsSet[p0]) or (p1 and armPartsSet[p1]) then
+					return true
+				end
+			elseif w:IsA("WeldConstraint") then
+				local p0 = w.Part0
+				local p1 = w.Part1
+				if (p0 and armPartsSet[p0]) or (p1 and armPartsSet[p1]) then
+					return true
+				end
 			end
 		end
 
-		local function carPlayOnCharacter()
-			if not character or not humanoid then return end
-			local hrp = character:FindFirstChild("HumanoidRootPart")
-			if not hrp then return end
-
-			carStopActive()
-
-			local anim = Instance.new("Animation")
-			anim.AnimationId = "rbxassetid://" .. tostring(CAR_ANIMS[carState.currentIndex].id)
-
-			local ok, track = pcall(function()
-				return humanoid:LoadAnimation(anim)
-			end)
-			if not ok or not track then
-				notify("Car", "Failed to load animation.", 2)
-				return
-			end
-
-			track.Priority = Enum.AnimationPriority.Action
-			track.Looped = true
-			pcall(function()
-				track:Play()
-				track:AdjustWeight(1)
-			end)
-			carState.activeTrack = track
-
-			pcall(function()
-				camera.CameraSubject = humanoid
-			end)
-
-			local lastPos = hrp.Position
-			local lastT = os.clock()
-
-			carState.activeConn = RunService.Heartbeat:Connect(function()
-				if not hrp.Parent or not carState.activeTrack or not carState.activeTrack.IsPlaying then return end
-
-				local now = os.clock()
-				local dt = now - lastT
-				if dt <= 0 then return end
-
-				local pos = hrp.Position
-				local vel = (pos - lastPos) / dt
-				local speed = vel.Magnitude
-
-				if speed > 0.1 then
-					local forwardDot = 0
-					pcall(function()
-						forwardDot = hrp.CFrame.LookVector:Dot(vel.Unit)
-					end)
-					local sign = (forwardDot >= 0) and 1 or -1
-					local mult = CAR_ANIMS[carState.currentIndex].mult or 1
-					local calc = (speed / 16) * mult * sign
-					pcall(function()
-						carState.activeTrack:AdjustSpeed(calc)
-					end)
-				else
-					pcall(function()
-						carState.activeTrack:AdjustSpeed(0)
-					end)
+		for _, j in ipairs(handle:GetJoints()) do
+			if j:IsA("Weld") or j:IsA("Motor6D") then
+				local p0 = j.Part0
+				local p1 = j.Part1
+				if (p0 and armPartsSet[p0]) or (p1 and armPartsSet[p1]) then
+					return true
 				end
-
-				lastPos = pos
-				lastT = now
-			end)
+			elseif j:IsA("WeldConstraint") then
+				local p0 = j.Part0
+				local p1 = j.Part1
+				if (p0 and armPartsSet[p0]) or (p1 and armPartsSet[p1]) then
+					return true
+				end
+			end
 		end
 
-		local function ensureCarPopout()
-			if carGui and carGui.Parent then
-				return
-			end
+		return false
+	end
 
-			carGui = Instance.new("ScreenGui")
-			carGui.Name = "SOS_CarUI"
-			carGui.ResetOnSpawn = false
-			carGui.IgnoreGuiInset = true
-			carGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-			carGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-			carGui.Enabled = true
+	local function setArmVisibilityEnabled(on)
+		armsState.enabled = on
+		armsBtn.Text = on and "Arms: ON" or "Arms: OFF"
+		setTabButtonActive(armsBtn, on)
 
-			carGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-				if not carGui.Enabled then
-					carStopActive()
-					carGui.Enabled = true
-				end
-			end)
-
-			carWindow = Instance.new("Frame")
-			carWindow.Name = "CarWindow"
-			carWindow.AnchorPoint = Vector2.new(0.5, 0.5)
-			carWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-			carWindow.Size = UDim2.new(0, 420, 0, 360)
-			carWindow.BorderSizePixel = 0
-			carWindow.Parent = carGui
-			makeCorner(carWindow, 16)
-			makeGlass(carWindow)
-			makeStroke(carWindow, 2)
-			carWindow.Active = true
-			pcall(function()
-				carWindow.Draggable = true
-			end)
-
-			local titleBar = Instance.new("Frame")
-			titleBar.BackgroundTransparency = 1
-			titleBar.Size = UDim2.new(1, 0, 0, 46)
-			titleBar.Parent = carWindow
-
-			local title = makeText(titleBar, "Look Mum im a Car", 18, true)
-			title.Size = UDim2.new(1, -80, 1, 0)
-			title.Position = UDim2.new(0, 14, 0, 0)
-			title.TextXAlignment = Enum.TextXAlignment.Left
-
-			local minBtn = makeButton(titleBar, "-")
-			minBtn.Size = UDim2.new(0, 44, 0, 34)
-			minBtn.Position = UDim2.new(1, -56, 0, 6)
-
-			local content = Instance.new("Frame")
-			content.BackgroundTransparency = 1
-			content.Position = UDim2.new(0, 14, 0, 54)
-			content.Size = UDim2.new(1, -28, 1, -68)
-			content.Parent = carWindow
-
-			local infoLine = makeText(content, "Pick an animation, then Play. Stop returns your camera properly. Not bad for a car, honestly.", 13, false)
-			infoLine.Size = UDim2.new(1, 0, 0, 34)
-			infoLine.TextColor3 = Color3.fromRGB(210, 210, 210)
-
-			local navRow = Instance.new("Frame")
-			navRow.BackgroundTransparency = 1
-			navRow.Position = UDim2.new(0, 0, 0, 44)
-			navRow.Size = UDim2.new(1, 0, 0, 40)
-			navRow.Parent = content
-
-			local prevBtn = makeButton(navRow, "< Prev")
-			prevBtn.Size = UDim2.new(0.48, 0, 1, 0)
-
-			local nextBtn = makeButton(navRow, "Next >")
-			nextBtn.Size = UDim2.new(0.48, 0, 1, 0)
-			nextBtn.Position = UDim2.new(0.52, 0, 0, 0)
-
-			local nameLabel = makeText(content, "", 14, true)
-			nameLabel.Position = UDim2.new(0, 0, 0, 92)
-			nameLabel.Size = UDim2.new(1, 0, 0, 22)
-			nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-
-			local function refreshName()
-				nameLabel.Text = "Animation " .. tostring(carState.currentIndex) .. " / " .. tostring(#CAR_ANIMS)
-			end
-			refreshName()
-
-			local controlsRow = Instance.new("Frame")
-			controlsRow.BackgroundTransparency = 1
-			controlsRow.Position = UDim2.new(0, 0, 1, -44)
-			controlsRow.Size = UDim2.new(1, 0, 0, 40)
-			controlsRow.Parent = content
-
-			local playBtn = makeButton(controlsRow, "Play Car")
-			playBtn.Size = UDim2.new(0.48, 0, 1, 0)
-
-			local stopBtn = makeButton(controlsRow, "Stop Car")
-			stopBtn.Size = UDim2.new(0.48, 0, 1, 0)
-			stopBtn.Position = UDim2.new(0.52, 0, 0, 0)
-
-			prevBtn.MouseButton1Click:Connect(function()
-				carState.currentIndex = (carState.currentIndex - 2) % #CAR_ANIMS + 1
-				refreshName()
-			end)
-
-			nextBtn.MouseButton1Click:Connect(function()
-				carState.currentIndex = carState.currentIndex % #CAR_ANIMS + 1
-				refreshName()
-			end)
-
-			playBtn.MouseButton1Click:Connect(function()
-				carPlayOnCharacter()
-			end)
-
-			stopBtn.MouseButton1Click:Connect(function()
-				carStopActive()
-			end)
-
-			minBtn.MouseButton1Click:Connect(function()
-				if not content.Visible then
-					content.Visible = true
-					carWindow.Size = UDim2.new(0, 420, 0, 360)
-				else
-					content.Visible = false
-					carWindow.Size = UDim2.new(0, 420, 0, 52)
-				end
-			end)
+		if armsState.conn then
+			armsState.conn:Disconnect()
+			armsState.conn = nil
 		end
 
-		carButton.MouseButton1Click:Connect(function()
-			ensureCarPopout()
-			if carGui then
-				carGui.Enabled = true
+		if not on then
+			return
+		end
+
+		armsState.conn = RunService.RenderStepped:Connect(function()
+			local char = LocalPlayer.Character
+			if not char then return end
+
+			local armParts = collectArmParts(char)
+			local armPartsSet = {}
+			for _, p in ipairs(armParts) do
+				armPartsSet[p] = true
 			end
-			if carWindow then
-				carWindow.Visible = true
+
+			for _, p in ipairs(armParts) do
+				p.LocalTransparencyModifier = 0
+			end
+
+			for _, ch in ipairs(char:GetChildren()) do
+				if ch:IsA("Accessory") then
+					if accessoryAttachedToArms(ch, armPartsSet) then
+						local h = ch:FindFirstChild("Handle")
+						if h and h:IsA("BasePart") then
+							h.LocalTransparencyModifier = 0
+						end
+					end
+				end
 			end
 		end)
 	end
+
+	armsBtn.MouseButton1Click:Connect(function()
+		setArmVisibilityEnabled(not armsState.enabled)
+	end)
+
+	LocalPlayer.CharacterAdded:Connect(function()
+		if armsState.enabled then
+			task.wait(0.1)
+			setArmVisibilityEnabled(true)
+		end
+	end)
+end
 
 	----------------------------------------------------------------
 	-- LIGHTING TAB (unchanged)
