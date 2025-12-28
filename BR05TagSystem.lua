@@ -95,7 +95,6 @@ local TesterUserIds = {
 }
 
 local SinProfiles = {
-	[2630250935] = { SinName = "Cinna" },
 	[105995794]  = { SinName = "Lettuce" },
 	[138975737]  = { SinName = "Music" },
 	[9159968275] = { SinName = "Music" },
@@ -117,6 +116,7 @@ local OgProfiles = {
 
 -- Custom tag profiles (empty by default)
 local CustomTags = {
+	[2630250935] = { TagText = "Co-Owner", Color = Color3.fromRGB(255,255,255) }
 	-- [123456789] = { TagText = "Custom Title", Color = Color3.fromRGB(255,255,255) },
 }
 
