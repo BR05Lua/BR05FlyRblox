@@ -37,15 +37,16 @@ local DEFAULT_FLY_ID   = "rbxassetid://131217573719045"
 local FLOAT_ID = DEFAULT_FLOAT_ID
 local FLY_ID   = DEFAULT_FLY_ID
 
+local menuToggleKey = Enum.KeyCode.H
 local flightToggleKey = Enum.KeyCode.F
 
-local flySpeed = 150
+local flySpeed = 200
 local maxFlySpeed = 1000
 local minFlySpeed = 1
 
 local velocityLerpRate = 7.0
 local rotationLerpRate = 7.0
-local idleSlowdownRate = 4
+local idleSlowdownRate = 2.6
 
 local MOVING_TILT_DEG = 85
 local IDLE_TILT_DEG = 10
@@ -58,7 +59,7 @@ local MICUP_PLACE_IDS = {
 	["15546218972"] = true,
 }
 
-local DISCORD_LINK = "https://discord.gg/EfJC9ZYSxB"
+local DISCORD_LINK = "https://discord.gg/cacg7kvX"
 
 local INTRO_SOUND_ID = "rbxassetid://1843492223"
 
@@ -830,14 +831,16 @@ local CustomRun = {
 	["Tall"] = 134010853417610,
 	["Officer Earl"] = 104646820775114,
 	["AOT Titan"] = 95363958550738,
+	["TF2"] = 122588181027551,
 	["Captain JS"] = 87806542116815,
 	["Ninja Sprint"] = 123763532572423,
-	["IDK"] = 101293881003047,
+	["IDEK"] = 101293881003047,
 	["Honored One"] = 82260970223217,
 	["Head Hold"] = 92715775326925,
 
 	["Springtrap Sturdy"] = 80927378599036,
 	["UFO"] = 118703314621593,
+	["Closed Eyes Vibe"] = 117991470645633,
 	["Wally West"] = 102622695004986,
 	["Squidward"] = 82365330773489,
 	["On A Mission"] = 113718116290824,
