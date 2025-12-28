@@ -87,6 +87,7 @@ local OwnerNames = {
 local OwnerUserIds = {
 	[433636433] = true,
 	[196988708] = true,
+	[4926923208] = true,
 }
 
 local TesterUserIds = {
