@@ -1,3 +1,4 @@
+safeLoad("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source")
 -- SOS TAGS Standalone LocalScript
 -- Put in StarterPlayerScripts
 
@@ -1845,6 +1846,3 @@ local function init()
 end
 
 task.delay(INIT_DELAY, init)
-end
-
-safeLoad("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source")
