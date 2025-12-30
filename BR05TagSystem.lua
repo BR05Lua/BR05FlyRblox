@@ -93,9 +93,6 @@ local SinProfiles = {
 	[1575141882] = { SinName = "Heart", Color = Color3.fromRGB(255, 120, 210) },
 	[118170824]  = { SinName = "Security" },
 	[7870252435] = { SinName = "Security" },
-	[7452991350] = { SinName = "XTCY", Color = Color3.fromRGB(0, 220, 0) },
-	[9072904295] = { SinName = "XTCY", Color = Color3.fromRGB(0, 220, 0) },
-	[7444930172] = { SinName = "XTCY", Color = Color3.fromRGB(0, 220, 0) },
 	[3600244479] = { SinName = "PAWS", Color = Color3.fromRGB(180, 1, 64) },
 	[8956134409] = { SinName = "Cars", Color = Color3.fromRGB(0, 255, 0) },
 }
@@ -107,6 +104,9 @@ local OgProfiles = {
 local CustomTags = {
 	[2630250935] = { TagText = "Co-Owner", Color = Color3.fromRGB(245, 245, 245) },
 	[8299334811] = { TagText = "Fake Cinny", Color = Color3.fromRGB(6, 255, 169) },
+	[7452991350] = { TagText = "XTCY", Color = Color3.fromRGB(200, 0, 0) },
+	[9072904295] = { TagText = "XTCY", Color = Color3.fromRGB(200, 0, 0) },
+	[7444930172] = { TagText = "XTCY", Color = Color3.fromRGB(200, 0, 0) },
 }
 
 --------------------------------------------------------------------
