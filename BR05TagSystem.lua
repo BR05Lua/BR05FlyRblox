@@ -142,15 +142,16 @@ local CustomTags = {
 --------------------------------------------------------------------
 local TagEffectProfiles = {
 	[754232813] = {
-	Gradient1 = Color3.fromRGB(140, 0, 255), -- pure purple vibe
-	Gradient2 = Color3.fromRGB(0, 0, 0),     -- black
+	Gradient1 = Color3.fromRGB(140, 0, 255),  -- purple
+	Gradient2 = Color3.fromRGB(10, 10, 10),   -- NOT pure black (still basically black)
 	Gradient3 = Color3.fromRGB(255, 255, 255), -- white
 
-	SpinGradient = false,  -- set true if you want it rotating
-	ScrollGradient = false, -- set true if you want it sliding
+	SpinGradient = true,     -- makes it obvious
+	ScrollGradient = true,   -- makes it obvious
 
 	Effects = { "Pulse", "Scanline" },
 },
+
 
 	-- Owner defaults are applied automatically too, but you can override here per UserId
 	-- Example:
