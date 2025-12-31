@@ -98,7 +98,7 @@ local SinProfiles = {
 }
 
 local OgProfiles = {
-	[2630250935],
+
 }
 
 local CustomTags = {
