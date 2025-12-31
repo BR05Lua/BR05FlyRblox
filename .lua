@@ -84,8 +84,9 @@ local VIP_GAMEPASSES = {
 -- ROLE GATES FOR TABS
 --------------------------------------------------------------------
 local OWNER_USERIDS = {
-	-- Add your UserId(s) here if needed, example:
-	-- [123456789] = true,
+    [433636433] = true,
+	[196988708] = true,
+	[4926923208] = true,
 }
 
 local function isOwnerUser()
