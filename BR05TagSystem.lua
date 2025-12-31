@@ -249,16 +249,23 @@ local function isOwner(plr)
 	return plr and ((OwnerNames[plr.Name] == true) or (OwnerUserIds[plr.UserId] == true))
 end
 
+local CoOwners = {
+	[2630250935] = true,
+	[9253548067] = true,
+	[5348319883] = true,
+}
+
 local function isCoOwner(plr)
-	return plr and (plr.UserId == 2630250935)
+	return plr and CoOwners[plr.UserId] == true
 end
 
 local function canSeeBroadcastButtons()
 	if isOwner(LocalPlayer) then
 		return true
 	end
-	return LocalPlayer.UserId == 2630250935
+	return isCoOwner(LocalPlayer)
 end
+
 --------------------------------------------------------------------
 -- CHAT SEND
 --------------------------------------------------------------------
