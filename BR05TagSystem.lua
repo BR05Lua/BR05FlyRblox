@@ -268,7 +268,7 @@ local TagEffectProfiles = {
 		ScrollGradient = false,
 		TopTextColor = Color3.fromRGB(255, 255, 0),
 		BottomTextColor = Color3.fromRGB(220, 220, 220),
-		Effects = { "Pulse", "Scanline" },
+		Effects = { "Pulse", "Scanline", "Bounce" },
 	},
 }
 
