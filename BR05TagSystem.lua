@@ -1550,7 +1550,7 @@ end
 local function tryShowCustomUserIntro(userId)
 	local plr = Players:GetPlayerByUserId(userId)
 	if not plr then return end
-	if plr.UserId == LocalPlayer.UserId then return end
+	-- if plr.UserId == LocalPlayer.UserId then return end
 	if CustomIntroShown[userId] then return end
 
 	local intro = CustomUserIntros[userId]
