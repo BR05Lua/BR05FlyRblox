@@ -41,9 +41,16 @@ local COOWNER_ARRIVAL_TEXT = "Hes Behind You"
 local COOWNER_ARRIVAL_SOUND_ID = "rbxassetid://119023903778140"
 
 -- Sins intro defaults
-local SIN_ARRIVAL_DEFAULT_SOUND_ID = "rbxassetid://9118823105"
+local SIN_ARRIVAL_DEFAULT_SOUND_ID = "rbxassetid://87617059556991"
 
--- Optional per user intros (text popup, glitchy, no full overlay)
+-- Intro sound volume tuning
+local INTRO_VOLUME_MULT = 0.30 -- 30 percent of whatever it used to be
+
+-- SOS activation join ping
+local SOS_JOIN_PING_SOUND_ID = "rbxassetid://5773338685"
+local SOS_JOIN_PING_VOLUME = 0.10 -- 10 percent volume
+
+-- Optional per user intros (text popup, glitchy)
 -- CustomUserIntros[UserId] = { Text = "Hello", SoundId = "rbxassetid://123", TextColor = Color3.fromRGB(255,255,255) }
 local CustomUserIntros = {
 
@@ -107,7 +114,7 @@ local CustomTags = {
 	[9072904295] = { TagText = "OG XTCY", Color = Color3.fromRGB(200, 0, 0) },
 	[7444930172] = { TagText = "OG XTCY", Color = Color3.fromRGB(200, 0, 0) },
 	[2630250935] = { TagText = "Co-Owner", Color = Color3.fromRGB(172, 233, 255) },
-	[754232813]  = { TagText = "OG Ghoul" },
+	[754232813]  = { TagText = "OG Ghoul", Color = Color3.fromRGB(98, 0, 216) },
 	[4689208231] = { TagText = "OG Shiroyasha", Color = Color3.fromRGB(255, 255, 255) },
 }
 
@@ -130,7 +137,8 @@ local CMD_COOWNER_FX_PREFIX = "CoOwner_fx:"
 --------------------------------------------------------------------
 -- TAG PRESETS (EASY NAMES)
 -- Use: TagEffectProfiles[UserId] = { Preset = "RED_SCROLL" }
--- Also works: "BLUE_SPIN", "PURPLE_SCROLL", "BLACK_SOLID", "WHITE_SOLID", "RAINBOW_SPIN", "RAINBOW_SCROLL"
+-- Also works: "BLUE_SPIN", "PURPLE_SCROLL", "BLACK_SOLID", "WHITE_SOLID", "YELLOW_SCROLL"
+-- Also works: "RAINBOW_SPIN", "RAINBOW_SCROLL"
 --------------------------------------------------------------------
 local TagPresets = {}
 
@@ -139,7 +147,6 @@ local function addPreset(name, t)
 end
 
 do
-	-- Simple monos
 	addPreset("BLACK_SOLID", {
 		Gradient1 = Color3.fromRGB(0, 0, 0),
 		Gradient2 = Color3.fromRGB(0, 0, 0),
@@ -173,7 +180,6 @@ do
 		Effects = { "Scanline" },
 	})
 
-	-- Rainbow modes
 	addPreset("RAINBOW_SPIN", {
 		Gradient1 = Color3.fromRGB(255, 0, 0),
 		Gradient2 = Color3.fromRGB(0, 255, 0),
@@ -196,7 +202,6 @@ do
 		Effects = { "Scanline" },
 	})
 
-	-- Full rainbow colour wheel presets
 	local wheel = {
 		{ "RED",    0/12 },
 		{ "ORANGE", 1/12 },
@@ -241,17 +246,9 @@ end
 
 --------------------------------------------------------------------
 -- TAG EFFECT PROFILES (FAST ASSIGN)
--- Quick usage examples:
--- TagEffectProfiles[UserId] = { Preset = "BLUE_SCROLL" }
--- TagEffectProfiles[UserId] = { Preset = "BLACK_SOLID", TopTextColor = Color3.fromRGB(255,0,0) }
--- TagEffectProfiles[UserId] = { Preset = "PURPLE_SCROLL", Effects = { "Pulse", "Scanline" } }
 --------------------------------------------------------------------
 local TagEffectProfiles = {
-	-- Your requested one:
-	-- Purple to Black to White
-	-- Yellow top text
-	-- Pulse and Scanline
-	-- Gradient affects outline too
+	-- Example custom: Purple to Black to White with yellow top text, pulse and scanlines
 	[754232813] = {
 		Gradient1 = Color3.fromRGB(140, 0, 255),
 		Gradient2 = Color3.fromRGB(0, 0, 0),
@@ -329,10 +326,6 @@ local broadcastPanel
 local broadcastSOS
 local broadcastAK
 
-local sfxPanel
-local sfxOnBtn
-local sfxOffBtn
-
 local ownerPresenceAnnounced = false
 local coOwnerPresenceAnnounced = false
 
@@ -341,6 +334,8 @@ local TagFxConnByUserId = {}
 
 local SinIntroShown = {}
 local CustomIntroShown = {}
+
+local JoinPopupByUserId = {}
 
 --------------------------------------------------------------------
 -- UI HELPERS
@@ -469,7 +464,7 @@ local function trySendChat(text)
 end
 
 --------------------------------------------------------------------
--- BROADCAST UI (simple)
+-- BROADCAST UI
 --------------------------------------------------------------------
 local function ensureBroadcastPanel()
 	ensureGui()
@@ -646,7 +641,7 @@ end
 --------------------------------------------------------------------
 -- CLICK ACTIONS
 --------------------------------------------------------------------
-local function teleportBehind(plr, studsBack)
+local function teleportToPlayer(plr)
 	if not plr or plr == LocalPlayer then return end
 
 	local myChar = LocalPlayer.Character
@@ -657,8 +652,7 @@ local function teleportBehind(plr, studsBack)
 	local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
 	if not myHRP or not theirHRP then return end
 
-	local back = studsBack or 5
-	local targetCf = theirHRP.CFrame * CFrame.new(0, 0, back)
+	local targetCf = theirHRP.CFrame * CFrame.new(0, 0, -4)
 
 	pcall(function()
 		if myChar.PivotTo then
@@ -695,7 +689,7 @@ local function makeTagButtonCommon(btn, plr)
 		if holdingCtrl then
 			showPlayerStats(plr)
 		else
-			teleportBehind(plr, 5)
+			teleportToPlayer(plr)
 		end
 	end
 
@@ -805,19 +799,7 @@ local function addSinWavyLook(parentBtn)
 end
 
 --------------------------------------------------------------------
--- TAG FX SYSTEM (gradient background + gradient outline + easy presets)
--- Effects supported:
--- "Pulse"
--- "Scanline"
--- "Sparkles"
--- "Shimmer"
--- "Shake"
--- "Flicker"
--- "RainbowText"
--- "BounceText"
--- "RgbOutline"
--- "OwnerGlitchBackdrop"
--- "OwnerGlitchText"
+-- TAG FX SYSTEM
 --------------------------------------------------------------------
 local function disconnectTagFxConn(userId)
 	local c = TagFxConnByUserId[userId]
@@ -854,7 +836,6 @@ local function buildGradientSequence(c1, c2, c3)
 end
 
 local function mergeEffects(a, b)
-	-- if b is provided, b wins
 	if type(b) == "table" then
 		return b
 	end
@@ -865,13 +846,11 @@ local function resolveTagProfile(plr, role, roleColor)
 	local out = {}
 	local rolePreset = RoleEffectPresets[role] or RoleEffectPresets.Normal or {}
 
-	-- Start from role preset
 	local base = {}
 	if type(rolePreset.Preset) == "string" and TagPresets[rolePreset.Preset] then
 		base = TagPresets[rolePreset.Preset]
 	end
 
-	-- Apply role overrides (Effects and text colours)
 	out.Gradient1 = base.Gradient1
 	out.Gradient2 = base.Gradient2
 	out.Gradient3 = base.Gradient3
@@ -890,10 +869,8 @@ local function resolveTagProfile(plr, role, roleColor)
 	if rolePreset.BottomTextColor then out.BottomTextColor = rolePreset.BottomTextColor end
 	out.Effects = mergeEffects(out.Effects, rolePreset.Effects)
 
-	-- Now apply user profile
 	local userProf = TagEffectProfiles[plr.UserId]
 	if userProf then
-		-- If user selects a preset, that becomes their base
 		if type(userProf.Preset) == "string" and TagPresets[userProf.Preset] then
 			local p = TagPresets[userProf.Preset]
 			out.Gradient1 = p.Gradient1
@@ -906,7 +883,6 @@ local function resolveTagProfile(plr, role, roleColor)
 			out.Effects = p.Effects
 		end
 
-		-- User overrides
 		if userProf.Gradient1 then out.Gradient1 = userProf.Gradient1 end
 		if userProf.Gradient2 then out.Gradient2 = userProf.Gradient2 end
 		if userProf.Gradient3 ~= nil then out.Gradient3 = userProf.Gradient3 end
@@ -917,7 +893,6 @@ local function resolveTagProfile(plr, role, roleColor)
 		out.Effects = mergeEffects(out.Effects, userProf.Effects)
 	end
 
-	-- Defaults if missing
 	if not out.Gradient1 then out.Gradient1 = Color3.fromRGB(24, 24, 30) end
 	if not out.Gradient2 then out.Gradient2 = Color3.fromRGB(10, 10, 12) end
 	if out.SpinGradient == nil then out.SpinGradient = false end
@@ -937,10 +912,8 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 	local profile = resolveTagProfile(plr, role, roleColor)
 	local effects = profile.Effects
 
-	-- Background gradient
 	baseGrad.Color = buildGradientSequence(profile.Gradient1, profile.Gradient2, profile.Gradient3)
 
-	-- Outline gradient (this is what you asked for)
 	local strokeGrad = nil
 	if stroke then
 		strokeGrad = stroke:FindFirstChild("StrokeGradient")
@@ -954,11 +927,9 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 		strokeGrad.Color = buildGradientSequence(profile.Gradient1, profile.Gradient2, profile.Gradient3)
 	end
 
-	-- Text colours are separate from gradient
 	if topLabel then topLabel.TextColor3 = profile.TopTextColor end
 	if bottomLabel then bottomLabel.TextColor3 = profile.BottomTextColor end
 
-	-- Owner glitch visuals inside tag
 	if hasEffect(effects, "OwnerGlitchBackdrop") then
 		if not btn:FindFirstChild("OwnerGlitchImg") then
 			addOwnerGlitchBackdrop(btn)
@@ -968,7 +939,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 		createOwnerGlitchText(topLabel)
 	end
 
-	-- If RGB outline is enabled, remove stroke gradient because they fight
 	if hasEffect(effects, "RgbOutline") and stroke then
 		local sg = stroke:FindFirstChild("StrokeGradient")
 		if sg then sg:Destroy() end
@@ -976,7 +946,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 		startRgbOutline(stroke)
 	end
 
-	-- Scanlines overlay
 	local scan = btn:FindFirstChild("Scanlines")
 	if hasEffect(effects, "Scanline") then
 		if not scan then
@@ -999,7 +968,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 		if scan then scan:Destroy() end
 	end
 
-	-- Sparkles overlay
 	local sparkle = btn:FindFirstChild("Sparkles")
 	if hasEffect(effects, "Sparkles") then
 		if not sparkle then
@@ -1030,20 +998,17 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 
 		t = t + dt
 
-		-- Spin gradient
 		if profile.SpinGradient then
 			baseGrad.Rotation = (baseGrad.Rotation + dt * 120) % 360
 			if strokeGrad then strokeGrad.Rotation = baseGrad.Rotation end
 		end
 
-		-- Scroll gradient and shimmer
 		if profile.ScrollGradient or hasEffect(effects, "Shimmer") then
 			local off = math.sin(t * 1.8) * 0.25
 			baseGrad.Offset = Vector2.new(off, 0)
 			if strokeGrad then strokeGrad.Offset = baseGrad.Offset end
 		end
 
-		-- Pulse
 		if hasEffect(effects, "Pulse") then
 			local s = 1 + (math.sin(t * 5.0) * 0.02)
 			btn.Size = UDim2.new(baseBtnSize.X.Scale, baseBtnSize.X.Offset * s, baseBtnSize.Y.Scale, baseBtnSize.Y.Offset * s)
@@ -1051,14 +1016,12 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			btn.Size = baseBtnSize
 		end
 
-		-- Shake
 		if hasEffect(effects, "Shake") then
 			btn.Rotation = baseBtnRot + (math.sin(t * 25) * 0.8)
 		else
 			btn.Rotation = baseBtnRot
 		end
 
-		-- Flicker (top text)
 		if hasEffect(effects, "Flicker") and topLabel then
 			local v = (math.sin(t * 22) * 0.5 + 0.5)
 			topLabel.TextTransparency = (v > 0.88) and 0.25 or 0
@@ -1066,13 +1029,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			topLabel.TextTransparency = 0
 		end
 
-		-- RainbowText (only if you want it, but text colour override will win if you set TopTextColor)
-		if hasEffect(effects, "RainbowText") and topLabel and (profile.TopTextColor == nil) then
-			local h = (t * 0.35) % 1
-			topLabel.TextColor3 = Color3.fromHSV(h, 1, 1)
-		end
-
-		-- Bounce top text
 		if hasEffect(effects, "BounceText") and topLabel then
 			local y = math.sin(t * 6) * 1.2
 			topLabel.Position = UDim2.new(0, 5, 0, 3 + y)
@@ -1080,7 +1036,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			topLabel.Position = UDim2.new(0, 5, 0, 3)
 		end
 
-		-- Scanline movement
 		if scan then
 			local g = scan:FindFirstChildOfClass("UIGradient")
 			if g then
@@ -1088,12 +1043,10 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			end
 		end
 
-		-- Sparkles shimmer
 		if sparkle then
 			sparkle.ImageTransparency = 0.70 + (math.sin(t * 3.0) * 0.12)
 		end
 
-		-- Force independent text colours every frame
 		if topLabel then topLabel.TextColor3 = profile.TopTextColor end
 		if bottomLabel then bottomLabel.TextColor3 = profile.BottomTextColor end
 	end)
@@ -1217,7 +1170,7 @@ local function ensureSpecialFx(plr, role)
 	end
 
 	local conn
-	conn = RunService.RenderStepped:Connect(function(dt)
+	conn = RunService.RenderStepped:Connect(function()
 		if not folder or not folder.Parent then
 			disconnectFxConn(plr.UserId)
 			return
@@ -1250,18 +1203,136 @@ local function ensureSpecialFx(plr, role)
 end
 
 --------------------------------------------------------------------
--- ARRIVAL INTROS
+-- ARRIVAL INTROS AND JOIN POPUP
 --------------------------------------------------------------------
-local function playArrivalSound(parentGui, soundId)
+local function playArrivalSound(parentGui, soundId, volume)
+	if not soundId or soundId == "" then return end
 	local s = Instance.new("Sound")
 	s.Name = "ArrivalSfx"
 	s.SoundId = soundId
-	s.Volume = 0.9
+	s.Volume = volume or 0.9
 	s.Looped = false
 	s.Parent = parentGui
 	pcall(function() s:Play() end)
 	task.delay(6, function()
 		if s and s.Parent then s:Destroy() end
+	end)
+end
+
+local function showJoinTpPopup(plr)
+	if not plr then return end
+	if plr.UserId == LocalPlayer.UserId then return end
+
+	ensureGui()
+
+	local old = JoinPopupByUserId[plr.UserId]
+	if old and old.Parent then old:Destroy() end
+	JoinPopupByUserId[plr.UserId] = nil
+
+	local frame = Instance.new("Frame")
+	frame.Name = "SOS_JoinPopup"
+	frame.AnchorPoint = Vector2.new(0.5, 0)
+	frame.Position = UDim2.new(0.5, 0, 0.08, 0)
+	frame.Size = UDim2.new(0, 520, 0, 70)
+	frame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+	frame.BackgroundTransparency = 1
+	frame.BorderSizePixel = 0
+	frame.ZIndex = 7000
+	frame.Parent = gui
+	makeCorner(frame, 14)
+	makeStroke(frame, 2, Color3.fromRGB(200, 40, 40), 0.55)
+
+	local grad = Instance.new("UIGradient")
+	grad.Rotation = 90
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 38)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
+	})
+	grad.Parent = frame
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.new(0, 16, 0, 10)
+	title.Size = UDim2.new(1, -160, 0, 22)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextColor3 = Color3.fromRGB(245, 245, 245)
+	title.TextTransparency = 1
+	title.ZIndex = 7001
+	title.Text = plr.Name .. " Has Joined"
+	title.Parent = frame
+
+	local hint = Instance.new("TextLabel")
+	hint.Name = "Hint"
+	hint.BackgroundTransparency = 1
+	hint.Position = UDim2.new(0, 16, 0, 34)
+	hint.Size = UDim2.new(1, -160, 0, 18)
+	hint.Font = Enum.Font.Gotham
+	hint.TextSize = 13
+	hint.TextXAlignment = Enum.TextXAlignment.Left
+	hint.TextColor3 = Color3.fromRGB(200, 200, 200)
+	hint.TextTransparency = 1
+	hint.ZIndex = 7001
+	hint.Text = "Press to tp to them"
+	hint.Parent = frame
+
+	local tpBtn = Instance.new("TextButton")
+	tpBtn.Name = "TP"
+	tpBtn.AnchorPoint = Vector2.new(1, 0.5)
+	tpBtn.Position = UDim2.new(1, -14, 0.5, 0)
+	tpBtn.Size = UDim2.new(0, 120, 0, 42)
+	tpBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	tpBtn.BackgroundTransparency = 1
+	tpBtn.BorderSizePixel = 0
+	tpBtn.AutoButtonColor = true
+	tpBtn.Text = "TP"
+	tpBtn.Font = Enum.Font.GothamBlack
+	tpBtn.TextSize = 16
+	tpBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+	tpBtn.TextTransparency = 1
+	tpBtn.ZIndex = 7002
+	tpBtn.Parent = frame
+	makeCorner(tpBtn, 12)
+	makeStroke(tpBtn, 2, Color3.fromRGB(200, 40, 40), 0.35)
+
+	tpBtn.MouseButton1Click:Connect(function()
+		teleportToPlayer(plr)
+	end)
+
+	JoinPopupByUserId[plr.UserId] = frame
+
+	-- Fade in
+	local tinf = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tout = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+	local t1 = TweenService:Create(frame, tinf, { BackgroundTransparency = 0.15 })
+	local t2 = TweenService:Create(title, tinf, { TextTransparency = 0 })
+	local t3 = TweenService:Create(hint, tinf, { TextTransparency = 0 })
+	local t4 = TweenService:Create(tpBtn, tinf, { BackgroundTransparency = 0.18, TextTransparency = 0 })
+
+	t1:Play()
+	t2:Play()
+	t3:Play()
+	t4:Play()
+
+	-- Auto close after 2 seconds total (including fade out)
+	task.delay(1.65, function()
+		if not frame or not frame.Parent then return end
+		local o1 = TweenService:Create(frame, tout, { BackgroundTransparency = 1 })
+		local o2 = TweenService:Create(title, tout, { TextTransparency = 1 })
+		local o3 = TweenService:Create(hint, tout, { TextTransparency = 1 })
+		local o4 = TweenService:Create(tpBtn, tout, { BackgroundTransparency = 1, TextTransparency = 1 })
+
+		o1:Play()
+		o2:Play()
+		o3:Play()
+		o4:Play()
+
+		task.delay(0.25, function()
+			if frame and frame.Parent then frame:Destroy() end
+		end)
 	end)
 end
 
@@ -1297,8 +1368,9 @@ local function showGlitchTextPopup(text, soundId, textColor)
 	label.ZIndex = 6001
 	label.Parent = frame
 
+	-- 30 percent volume intros
 	if soundId and soundId ~= "" then
-		playArrivalSound(gui, soundId)
+		playArrivalSound(gui, soundId, 0.9 * INTRO_VOLUME_MULT)
 	end
 
 	local base = text
@@ -1374,7 +1446,8 @@ local function showOwnerArrivalGlitch()
 	msg.ZIndex = 5002
 	msg.Parent = overlay
 
-	playArrivalSound(gui, OWNER_ARRIVAL_SOUND_ID)
+	-- 30 percent volume
+	playArrivalSound(gui, OWNER_ARRIVAL_SOUND_ID, 0.9 * INTRO_VOLUME_MULT)
 
 	task.spawn(function()
 		local rng = Random.new()
@@ -1427,7 +1500,8 @@ local function showCoOwnerArrivalGlitch()
 	msg.ZIndex = 5002
 	msg.Parent = overlay
 
-	playArrivalSound(gui, COOWNER_ARRIVAL_SOUND_ID)
+	-- 30 percent volume
+	playArrivalSound(gui, COOWNER_ARRIVAL_SOUND_ID, 0.9 * INTRO_VOLUME_MULT)
 
 	task.spawn(function()
 		local rng = Random.new()
@@ -1586,7 +1660,6 @@ local function createSosRoleTag(plr)
 	bottom.ZIndex = 4
 	bottom.Parent = btn
 
-	-- Keep Sin wobble
 	if role == "Sin" then
 		addSinWavyLook(btn)
 	end
@@ -1661,7 +1734,7 @@ local function hookPlayer(plr)
 end
 
 --------------------------------------------------------------------
--- SOS + AK UPDATES
+-- SOS AND AK UPDATES
 --------------------------------------------------------------------
 local function onSosActivated(userId)
 	if typeof(userId) ~= "number" then return end
@@ -1693,7 +1766,7 @@ local function textHasAk(text)
 end
 
 --------------------------------------------------------------------
--- COMMANDS (OWNER/COOWNER ONLY)
+-- COMMANDS (OWNER COOWNER ONLY)
 --------------------------------------------------------------------
 local function applyCommandFrom(uid, text)
 	local plr = Players:GetPlayerByUserId(uid)
@@ -1774,6 +1847,13 @@ local function handleIncoming(uid, text)
 	if applyCommandFrom(uid, text) then return end
 
 	if text == SOS_ACTIVATE_MARKER then
+		-- New behavior: play ping + show TP popup for 2 seconds
+		local plr = Players:GetPlayerByUserId(uid)
+		if plr and uid ~= LocalPlayer.UserId then
+			playArrivalSound(gui or ensureGui(), SOS_JOIN_PING_SOUND_ID, SOS_JOIN_PING_VOLUME)
+			showJoinTpPopup(plr)
+		end
+
 		onSosActivated(uid)
 		maybeReplyToActivation(uid)
 		return
@@ -1819,6 +1899,7 @@ end
 -- INIT
 --------------------------------------------------------------------
 local function init()
+	ensureGui()
 	ensureStatsPopup()
 	ensureBroadcastPanel()
 
@@ -1853,6 +1934,10 @@ local function init()
 			RepliedToActivationUserId[plr.UserId] = nil
 			SinIntroShown[plr.UserId] = nil
 			CustomIntroShown[plr.UserId] = nil
+
+			local p = JoinPopupByUserId[plr.UserId]
+			if p and p.Parent then p:Destroy() end
+			JoinPopupByUserId[plr.UserId] = nil
 		end
 		task.defer(reconcilePresence)
 	end)
@@ -1863,27 +1948,21 @@ local function init()
 	onSosActivated(LocalPlayer.UserId)
 	trySendChat(SOS_ACTIVATE_MARKER)
 
-	print("SOS Tags loaded. Presets ready.")
+	print("SOS Tags loaded. Presets ready. Join popup enabled.")
 end
 
 task.delay(INIT_DELAY, init)
 
 --------------------------------------------------------------------
--- QUICK HOW TO GIVE SOMEONE A TAG FAST (EXAMPLES)
--- Put these in TagEffectProfiles:
---
+-- QUICK EXAMPLES FOR PRESETS
 -- TagEffectProfiles[123] = { Preset = "RED_SCROLL" }
 -- TagEffectProfiles[123] = { Preset = "BLUE_SPIN" }
 -- TagEffectProfiles[123] = { Preset = "BLACK_SOLID" }
 -- TagEffectProfiles[123] = { Preset = "WHITE_SOLID" }
 -- TagEffectProfiles[123] = { Preset = "RAINBOW_SPIN" }
 -- TagEffectProfiles[123] = { Preset = "RAINBOW_SCROLL" }
---
--- You can also override text colours:
--- TagEffectProfiles[123] = { Preset = "RED_SCROLL", TopTextColor = Color3.fromRGB(255,255,0), BottomTextColor = Color3.fromRGB(255,255,255) }
---
--- And add effects:
 -- TagEffectProfiles[123] = { Preset = "PURPLE_SCROLL", Effects = { "Pulse", "Scanline", "Sparkles" } }
+-- TagEffectProfiles[123] = { Preset = "YELLOW_SCROLL", TopTextColor = Color3.fromRGB(0,0,0) }
 --------------------------------------------------------------------
 
 if IY_LOADED and not _G.IY_DEBUG == true then
