@@ -125,6 +125,7 @@ local CustomTags = {
 	[2630250935] = { TagText = "Co-Owner" },
 	[754232813]  = { TagText = "OG Ghoul" },
 	[4689208231] = { TagText = "OG Shiroyasha" },
+	[4689208231] = { TagText = "OG Audio Sam" },
 }
 
 --------------------------------------------------------------------
@@ -277,6 +278,16 @@ local TagEffectProfiles = {
 		Gradient1 = RED,
 		Gradient2 = DARK_RED,
 		Gradient3 = RED,
+		SpinGradient = false,
+		ScrollGradient = true,
+		TopTextColor = YELLOW,
+		BottomTextColor = Color3.fromRGB(240, 240, 240),
+		Effects = { "Scanline", "Shimmer" },
+		
+		[4689208231] = {
+		Gradient1 = DARK_BLUE,
+		Gradient2 = DARK_PURPLE,
+		Gradient3 = BLACK,
 		SpinGradient = false,
 		ScrollGradient = true,
 		TopTextColor = YELLOW,
