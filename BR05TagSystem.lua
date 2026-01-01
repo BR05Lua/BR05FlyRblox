@@ -54,7 +54,14 @@ local SOS_JOIN_PING_VOLUME = 0.10 -- 10 percent volume
 -- CustomUserIntros[UserId] = { Text = "Hello", SoundId = "rbxassetid://123", TextColor = Color3.fromRGB(255,255,255) }
 local CustomUserIntros = {
 
-	
+	local CustomUserIntros = {
+	[7452991350] = { 
+		Text = "XTCY Has Been Summoned.", 
+		SoundId = "rbxassetid://120403072198402", 
+		TextColor = Color3.fromRGB(200, 0, 0) 
+	},
+}
+
 
 }
 
