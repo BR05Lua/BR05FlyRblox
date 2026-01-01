@@ -32,7 +32,7 @@ local ORB_SIZE = 18
 local ORB_OFFSET_Y = 6.2
 
 --------------------------------------------------------------------
--- ARRIVAL FX
+-- ARRIVAL FX + POPUPS
 --------------------------------------------------------------------
 local OWNER_ARRIVAL_TEXT = "He has Arrived"
 local OWNER_ARRIVAL_SOUND_ID = "rbxassetid://136954512002069"
@@ -44,18 +44,21 @@ local COOWNER_ARRIVAL_SOUND_ID = "rbxassetid://119023903778140"
 local SIN_ARRIVAL_DEFAULT_SOUND_ID = "rbxassetid://87617059556991"
 
 -- Intro sound volume tuning
-local INTRO_VOLUME_MULT = 0.30 -- 30 percent of whatever it used to be
+local INTRO_VOLUME_MULT = 0.30
 
 -- SOS activation join ping
 local SOS_JOIN_PING_SOUND_ID = "rbxassetid://5773338685"
-local SOS_JOIN_PING_VOLUME = 0.10 -- 10 percent volume
+local SOS_JOIN_PING_VOLUME = 0.10
 
 -- Optional per user intros (text popup, glitchy)
 -- CustomUserIntros[UserId] = { Text = "Hello", SoundId = "rbxassetid://123", TextColor = Color3.fromRGB(255,255,255) }
 local CustomUserIntros = {
-
+	[7452991350] = {
+		Text = "XTCY Has Been Summoned.",
+		SoundId = "rbxassetid://120403072198402",
+		TextColor = Color3.fromRGB(200, 0, 0),
+	},
 }
-
 
 --------------------------------------------------------------------
 -- ROLES DATA
@@ -86,7 +89,7 @@ local CoOwners = {
 }
 
 local TesterUserIds = {
-
+	-- leave blank
 }
 
 local SinProfiles = {
@@ -101,14 +104,15 @@ local SinProfiles = {
 	[3600244479] = { SinName = "PAWS" },
 	[8956134409] = { SinName = "Cars" },
 
-	-- Optional intro overrides per Sin
+	-- Optional intro overrides per Sin:
 	-- [123] = { SinName = "Chaos", ArrivalText = "Chaos Walks In", ArrivalSoundId = "rbxassetid://123" },
 }
 
 local OgProfiles = {
-
+	-- keep blank unless you use it
 }
 
+-- Current CustomTags userIds you asked to keep
 local CustomTags = {
 	[8299334811] = { TagText = "OG Fake Cinny" },
 	[7452991350] = { TagText = "OG XTCY" },
@@ -138,8 +142,6 @@ local CMD_COOWNER_FX_PREFIX = "CoOwner_fx:"
 --------------------------------------------------------------------
 -- TAG PRESETS (EASY NAMES)
 -- Use: TagEffectProfiles[UserId] = { Preset = "RED_SCROLL" }
--- Also works: "BLUE_SPIN", "PURPLE_SCROLL", "BLACK_SOLID", "WHITE_SOLID", "YELLOW_SCROLL"
--- Also works: "RAINBOW_SPIN", "RAINBOW_SCROLL"
 --------------------------------------------------------------------
 local TagPresets = {}
 
@@ -247,61 +249,119 @@ end
 
 --------------------------------------------------------------------
 -- TAG EFFECT PROFILES (FAST ASSIGN)
+-- Your request:
+-- All current userIds in this script get yellow top text (except Sins which are red)
+-- Sins gradient = red, black, red
+-- Normal users use normal light blue top text
+-- Ghoul = purple, white, black
+-- XTCY = red, dark red, red
+-- XTCY custom intro already set above
 --------------------------------------------------------------------
+local YELLOW = Color3.fromRGB(255, 255, 0)
+local LIGHT_BLUE = Color3.fromRGB(120, 190, 235)
+local RED = Color3.fromRGB(255, 60, 60)
+local DARK_RED = Color3.fromRGB(140, 0, 0)
+
 local TagEffectProfiles = {
-	-- Example custom: Purple to Black to White with yellow top text, pulse and scanlines
+	-- Ghoul (754232813): purple, white, black
 	[754232813] = {
 		Gradient1 = Color3.fromRGB(140, 0, 255),
 		Gradient2 = Color3.fromRGB(255, 255, 255),
 		Gradient3 = Color3.fromRGB(0, 0, 0),
 		SpinGradient = false,
 		ScrollGradient = false,
-		TopTextColor = Color3.fromRGB(255, 255, 0),
+		TopTextColor = YELLOW,
 		BottomTextColor = Color3.fromRGB(220, 220, 220),
 		Effects = { "Pulse", "Scanline" },
 	},
+
+	-- XTCY (7452991350): red, dark red, red
+	[7452991350] = {
+		Gradient1 = RED,
+		Gradient2 = DARK_RED,
+		Gradient3 = RED,
+		SpinGradient = false,
+		ScrollGradient = true,
+		TopTextColor = YELLOW,
+		BottomTextColor = Color3.fromRGB(240, 240, 240),
+		Effects = { "Scanline", "Shimmer" },
+	},
+
+	-- Other current CustomTags IDs: yellow text, keep nice defaults
+	[8299334811] = { Preset = "SKY_SCROLL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Shimmer" } },
+	[9072904295] = { Preset = "RED_SCROLL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Shimmer" } },
+	[7444930172] = { Preset = "RED_SCROLL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Shimmer" } },
+
+	-- CoOwner (2630250935): yellow top text
+	[2630250935] = { Preset = "GREY_STEEL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Scanline", "Shimmer" } },
+
+	-- Shiroyasha (4689208231): yellow top text and fixed BounceText name
 	[4689208231] = {
 		Gradient1 = Color3.fromRGB(255, 255, 255),
 		Gradient2 = Color3.fromRGB(255, 255, 255),
 		Gradient3 = Color3.fromRGB(0, 0, 0),
 		SpinGradient = false,
 		ScrollGradient = false,
-		TopTextColor = Color3.fromRGB(255, 255, 0),
+		TopTextColor = YELLOW,
 		BottomTextColor = Color3.fromRGB(220, 220, 220),
-		Effects = { "Pulse", "Scanline", "Bounce" },
+		Effects = { "Pulse", "Scanline", "BounceText" },
 	},
+
+	-- Owners also get yellow top text (already yellow, but explicit)
+	[433636433] = { Preset = "BLACK_SOLID", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "OwnerGlitchBackdrop", "OwnerGlitchText", "RgbOutline", "Scanline", "Shimmer" }, ScrollGradient = true },
+	[196988708] = { Preset = "BLACK_SOLID", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "OwnerGlitchBackdrop", "OwnerGlitchText", "RgbOutline", "Scanline", "Shimmer" }, ScrollGradient = true },
+	[4926923208] = { Preset = "BLACK_SOLID", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "OwnerGlitchBackdrop", "OwnerGlitchText", "RgbOutline", "Scanline", "Shimmer" }, ScrollGradient = true },
+
+	-- Other CoOwners in your list get yellow top text
+	[9253548067] = { Preset = "GREY_STEEL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Scanline", "Shimmer" } },
+	[5348319883] = { Preset = "GREY_STEEL", TopTextColor = YELLOW, BottomTextColor = Color3.fromRGB(235, 235, 235), Effects = { "Scanline", "Shimmer" } },
 }
 
 --------------------------------------------------------------------
 -- ROLE DEFAULTS (used when user has no TagEffectProfiles entry)
+-- Your request:
+-- Sins are red, black, red
+-- Normal users are normal light blue
 --------------------------------------------------------------------
 local RoleEffectPresets = {
 	Owner = {
 		Preset = "BLACK_SOLID",
 		Effects = { "OwnerGlitchBackdrop", "OwnerGlitchText", "RgbOutline", "Scanline", "Shimmer" },
-		TopTextColor = Color3.fromRGB(255, 255, 80),
+		TopTextColor = YELLOW,
 		BottomTextColor = Color3.fromRGB(235, 235, 235),
 		ScrollGradient = true,
 	},
 	Sin = {
-		Preset = "RED_SCROLL",
-		Effects = { "Shimmer", "BounceText" },
+		-- Red, black, red for all sins
+		Gradient1 = RED,
+		Gradient2 = Color3.fromRGB(0, 0, 0),
+		Gradient3 = RED,
+		SpinGradient = false,
+		ScrollGradient = true,
+		TopTextColor = Color3.fromRGB(235, 70, 70),
+		BottomTextColor = Color3.fromRGB(235, 235, 235),
+		Effects = { "Scanline", "Shimmer" },
 	},
 	Tester = {
 		Preset = "GREEN_SCROLL",
 		Effects = { "Shimmer" },
+		TopTextColor = YELLOW,
 	},
 	OG = {
 		Preset = "SKY_SCROLL",
 		Effects = { "Shimmer" },
+		TopTextColor = YELLOW,
 	},
 	Custom = {
 		Preset = "GREY_STEEL",
 		Effects = { "Scanline" },
+		TopTextColor = YELLOW,
 	},
 	Normal = {
 		Preset = "GREY_STEEL",
 		Effects = {},
+		TopTextColor = LIGHT_BLUE,
+		BottomTextColor = Color3.fromRGB(230, 230, 230),
 	},
 }
 
@@ -336,6 +396,15 @@ local statsPopupLabel
 local broadcastPanel
 local broadcastSOS
 local broadcastAK
+
+local sfxPanel
+local sfxOnBtn
+local sfxOffBtn
+
+local trailPanel
+local trailArrow
+local trailOpen = false
+local trailTween = nil
 
 local ownerPresenceAnnounced = false
 local coOwnerPresenceAnnounced = false
@@ -424,14 +493,15 @@ local function isOwner(plr)
 end
 
 local function isCoOwner(plr)
-	return plr and CoOwners[plr.UserId] == true
+	return plr and (CoOwners[plr.UserId] == true)
 end
 
 local function canSeeBroadcastButtons()
-	if isOwner(LocalPlayer) then
-		return true
-	end
-	return isCoOwner(LocalPlayer)
+	return isOwner(LocalPlayer) or isCoOwner(LocalPlayer)
+end
+
+local function canSeeTrailMenu()
+	return isOwner(LocalPlayer) or isCoOwner(LocalPlayer)
 end
 
 --------------------------------------------------------------------
@@ -520,6 +590,338 @@ local function ensureBroadcastPanel()
 
 	broadcastAK = makeButton(broadcastPanel, "Broadcast AK")
 	broadcastAK.Size = UDim2.new(0, 100, 0, 32)
+end
+
+--------------------------------------------------------------------
+-- SFX PANEL (OWNER OR COOWNER)
+--------------------------------------------------------------------
+local function ensureSfxPanel()
+	ensureGui()
+
+	local show = isOwner(LocalPlayer) or isCoOwner(LocalPlayer)
+	if not show then
+		if sfxPanel and sfxPanel.Parent then sfxPanel:Destroy() end
+		sfxPanel, sfxOnBtn, sfxOffBtn = nil, nil, nil
+		return
+	end
+
+	if sfxPanel and sfxPanel.Parent then return end
+
+	sfxPanel = Instance.new("Frame")
+	sfxPanel.Name = "SfxPanel"
+	sfxPanel.AnchorPoint = Vector2.new(0, 1)
+	sfxPanel.Position = UDim2.new(0, 10, 1, -64)
+	sfxPanel.Size = UDim2.new(0, 220, 0, 44)
+	sfxPanel.BorderSizePixel = 0
+	sfxPanel.Parent = gui
+	makeCorner(sfxPanel, 14)
+	makeGlass(sfxPanel)
+	makeStroke(sfxPanel, 2, Color3.fromRGB(200, 40, 40), 0.1)
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 10)
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Parent = sfxPanel
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 10)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = sfxPanel
+
+	sfxOnBtn = makeButton(sfxPanel, "SFX ON")
+	sfxOnBtn.Size = UDim2.new(0, 100, 0, 30)
+
+	sfxOffBtn = makeButton(sfxPanel, "SFX OFF")
+	sfxOffBtn.Size = UDim2.new(0, 100, 0, 30)
+
+	sfxOnBtn.MouseButton1Click:Connect(function()
+		if isOwner(LocalPlayer) then
+			FxEnabled.Owner = true
+			trySendChat(CMD_OWNER_ON)
+		elseif isCoOwner(LocalPlayer) then
+			FxEnabled.CoOwner = true
+			trySendChat(CMD_COOWNER_ON)
+		end
+	end)
+
+	sfxOffBtn.MouseButton1Click:Connect(function()
+		if isOwner(LocalPlayer) then
+			FxEnabled.Owner = false
+			trySendChat(CMD_OWNER_OFF)
+		elseif isCoOwner(LocalPlayer) then
+			FxEnabled.CoOwner = false
+			trySendChat(CMD_COOWNER_OFF)
+		end
+	end)
+end
+
+--------------------------------------------------------------------
+-- TRAIL MENU (SLIDE OUT) WITH FX MODE BUTTONS
+--------------------------------------------------------------------
+local function makeColorChip(parent, label, color3, onClick)
+	local b = Instance.new("TextButton")
+	b.Name = "Chip_" .. label
+	b.Size = UDim2.new(0, 34, 0, 24)
+	b.BackgroundColor3 = color3
+	b.BackgroundTransparency = 0.05
+	b.BorderSizePixel = 0
+	b.Text = ""
+	b.AutoButtonColor = true
+	b.Parent = parent
+	makeCorner(b, 8)
+	makeStroke(b, 1, Color3.fromRGB(0, 0, 0), 0.35)
+
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Size = UDim2.new(1, 0, 1, 0)
+	t.Font = Enum.Font.GothamBold
+	t.TextSize = 10
+	t.TextColor3 = Color3.fromRGB(245, 245, 245)
+	t.TextStrokeTransparency = 0.6
+	t.Text = label
+	t.Parent = b
+
+	b.MouseButton1Click:Connect(onClick)
+	return b
+end
+
+local function ensureTrailMenu()
+	ensureGui()
+
+	if not canSeeTrailMenu() then
+		if trailPanel and trailPanel.Parent then trailPanel:Destroy() end
+		trailPanel, trailArrow = nil, nil
+		trailOpen = false
+		trailTween = nil
+		return
+	end
+
+	if trailPanel and trailPanel.Parent then
+		return
+	end
+
+	local PANEL_W, PANEL_H = 270, 240
+	local ARROW_W = 34
+
+	trailPanel = Instance.new("Frame")
+	trailPanel.Name = "SOS_TrailsPanel"
+	trailPanel.AnchorPoint = Vector2.new(0, 0.5)
+	trailPanel.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
+	trailPanel.Position = UDim2.new(0, -(PANEL_W - ARROW_W), 0.5, 0)
+	trailPanel.BorderSizePixel = 0
+	trailPanel.Parent = gui
+	makeCorner(trailPanel, 16)
+	makeGlass(trailPanel)
+	makeStroke(trailPanel, 2, Color3.fromRGB(200, 40, 40), 0.10)
+
+	trailArrow = Instance.new("TextButton")
+	trailArrow.Name = "Arrow"
+	trailArrow.AnchorPoint = Vector2.new(1, 0.5)
+	trailArrow.Size = UDim2.new(0, ARROW_W, 0, 46)
+	trailArrow.Position = UDim2.new(1, 0, 0.5, 0)
+	trailArrow.BorderSizePixel = 0
+	trailArrow.AutoButtonColor = true
+	trailArrow.Text = ">"
+	trailArrow.Font = Enum.Font.GothamBlack
+	trailArrow.TextSize = 18
+	trailArrow.TextColor3 = Color3.fromRGB(245, 245, 245)
+	trailArrow.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	trailArrow.BackgroundTransparency = 0.18
+	trailArrow.Parent = trailPanel
+	makeCorner(trailArrow, 14)
+	makeStroke(trailArrow, 2, Color3.fromRGB(200, 40, 40), 0.15)
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.new(0, 12, 0, 10)
+	title.Size = UDim2.new(1, -(ARROW_W + 18), 0, 22)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextColor3 = Color3.fromRGB(245, 245, 245)
+	title.Text = "Trails"
+	title.Parent = trailPanel
+
+	local sub = Instance.new("TextLabel")
+	sub.Name = "Sub"
+	sub.BackgroundTransparency = 1
+	sub.Position = UDim2.new(0, 12, 0, 34)
+	sub.Size = UDim2.new(1, -(ARROW_W + 18), 0, 18)
+	sub.Font = Enum.Font.Gotham
+	sub.TextSize = 12
+	sub.TextXAlignment = Enum.TextXAlignment.Left
+	sub.TextColor3 = Color3.fromRGB(200, 200, 200)
+	sub.Text = isOwner(LocalPlayer) and "Owner controls" or "CoOwner controls"
+	sub.Parent = trailPanel
+
+	local btnRow = Instance.new("Frame")
+	btnRow.BackgroundTransparency = 1
+	btnRow.Position = UDim2.new(0, 10, 0, 62)
+	btnRow.Size = UDim2.new(1, -(ARROW_W + 20), 0, 36)
+	btnRow.Parent = trailPanel
+
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rowLayout.Padding = UDim.new(0, 10)
+	rowLayout.Parent = btnRow
+
+	local onBtn = makeButton(btnRow, "ON")
+	onBtn.Size = UDim2.new(0, 90, 0, 32)
+
+	local offBtn = makeButton(btnRow, "OFF")
+	offBtn.Size = UDim2.new(0, 90, 0, 32)
+
+	local fxLabel = Instance.new("TextLabel")
+	fxLabel.BackgroundTransparency = 1
+	fxLabel.Position = UDim2.new(0, 12, 0, 104)
+	fxLabel.Size = UDim2.new(1, -(ARROW_W + 18), 0, 16)
+	fxLabel.Font = Enum.Font.GothamBold
+	fxLabel.TextSize = 12
+	fxLabel.TextXAlignment = Enum.TextXAlignment.Left
+	fxLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+	fxLabel.Text = "Effect"
+	fxLabel.Parent = trailPanel
+
+	local fxRow = Instance.new("Frame")
+	fxRow.BackgroundTransparency = 1
+	fxRow.Position = UDim2.new(0, 10, 0, 124)
+	fxRow.Size = UDim2.new(1, -(ARROW_W + 20), 0, 36)
+	fxRow.Parent = trailPanel
+
+	local fxLayout = Instance.new("UIListLayout")
+	fxLayout.FillDirection = Enum.FillDirection.Horizontal
+	fxLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	fxLayout.Padding = UDim.new(0, 10)
+	fxLayout.Parent = fxRow
+
+	local fxLines = makeButton(fxRow, "Lines")
+	fxLines.Size = UDim2.new(0, 66, 0, 32)
+	local fxLight = makeButton(fxRow, "Light")
+	fxLight.Size = UDim2.new(0, 66, 0, 32)
+	local fxGlitch = makeButton(fxRow, "Glitch")
+	fxGlitch.Size = UDim2.new(0, 66, 0, 32)
+
+	local colorsLabel = Instance.new("TextLabel")
+	colorsLabel.BackgroundTransparency = 1
+	colorsLabel.Position = UDim2.new(0, 12, 0, 168)
+	colorsLabel.Size = UDim2.new(1, -(ARROW_W + 18), 0, 16)
+	colorsLabel.Font = Enum.Font.GothamBold
+	colorsLabel.TextSize = 12
+	colorsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	colorsLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+	colorsLabel.Text = "Colour"
+	colorsLabel.Parent = trailPanel
+
+	local colorArea = Instance.new("Frame")
+	colorArea.BackgroundTransparency = 1
+	colorArea.Position = UDim2.new(0, 10, 0, 188)
+	colorArea.Size = UDim2.new(1, -(ARROW_W + 20), 0, 42)
+	colorArea.Parent = trailPanel
+
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.new(0, 34, 0, 24)
+	grid.CellPadding = UDim2.new(0, 8, 0, 8)
+	grid.FillDirection = Enum.FillDirection.Horizontal
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	grid.VerticalAlignment = Enum.VerticalAlignment.Top
+	grid.Parent = colorArea
+
+	local function sendOn()
+		if isOwner(LocalPlayer) then
+			FxEnabled.Owner = true
+			trySendChat(CMD_OWNER_ON)
+		elseif isCoOwner(LocalPlayer) then
+			FxEnabled.CoOwner = true
+			trySendChat(CMD_COOWNER_ON)
+		end
+	end
+
+	local function sendOff()
+		if isOwner(LocalPlayer) then
+			FxEnabled.Owner = false
+			trySendChat(CMD_OWNER_OFF)
+		elseif isCoOwner(LocalPlayer) then
+			FxEnabled.CoOwner = false
+			trySendChat(CMD_COOWNER_OFF)
+		end
+	end
+
+	local function sendColor(mode)
+		if isOwner(LocalPlayer) then
+			FxColorMode.Owner = mode
+			trySendChat(CMD_OWNER_COLOR_PREFIX .. mode)
+		elseif isCoOwner(LocalPlayer) then
+			FxColorMode.CoOwner = mode
+			trySendChat(CMD_COOWNER_COLOR_PREFIX .. mode)
+		end
+	end
+
+	local function sendFxMode(mode)
+		if isOwner(LocalPlayer) then
+			FxMode.Owner = mode
+			trySendChat(CMD_OWNER_FX_PREFIX .. mode)
+		elseif isCoOwner(LocalPlayer) then
+			FxMode.CoOwner = mode
+			trySendChat(CMD_COOWNER_FX_PREFIX .. mode)
+		end
+	end
+
+	onBtn.MouseButton1Click:Connect(sendOn)
+	offBtn.MouseButton1Click:Connect(sendOff)
+
+	fxLines.MouseButton1Click:Connect(function() sendFxMode("Lines") end)
+	fxLight.MouseButton1Click:Connect(function() sendFxMode("Lighting") end)
+	fxGlitch.MouseButton1Click:Connect(function() sendFxMode("Glitch") end)
+
+	local palette = {
+		{ "RGB", Color3.fromRGB(30, 30, 30), "Rainbow" },
+		{ "ICE", Color3.fromRGB(180, 245, 255), "Ice" },
+		{ "RED", Color3.fromRGB(255, 60, 60), "Red" },
+		{ "GRN", Color3.fromRGB(60, 255, 120), "Neon" },
+		{ "YEL", Color3.fromRGB(255, 220, 80), "Sun" },
+		{ "PRP", Color3.fromRGB(160, 120, 255), "Violet" },
+		{ "WHT", Color3.fromRGB(245, 245, 245), "White" },
+		{ "SLV", Color3.fromRGB(170, 170, 170), "Silver" },
+	}
+
+	for _, item in ipairs(palette) do
+		local label, col, mode = item[1], item[2], item[3]
+		makeColorChip(colorArea, label, col, function()
+			sendColor(mode)
+		end)
+	end
+
+	local openPos = UDim2.new(0, 10, 0.5, 0)
+	local closedPos = UDim2.new(0, -(PANEL_W - ARROW_W), 0.5, 0)
+
+	local function setTrailMenu(open)
+		trailOpen = open
+		trailArrow.Text = open and "<" or ">"
+
+		if trailTween then
+			pcall(function() trailTween:Cancel() end)
+			trailTween = nil
+		end
+
+		trailTween = TweenService:Create(
+			trailPanel,
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Position = open and openPos or closedPos }
+		)
+		trailTween:Play()
+	end
+
+	trailArrow.MouseButton1Click:Connect(function()
+		setTrailMenu(not trailOpen)
+	end)
+
+	trailOpen = false
+	trailArrow.Text = ">"
 end
 
 --------------------------------------------------------------------
@@ -624,24 +1026,24 @@ local function getTopLine(plr, role)
 
 	if role == "Sin" then
 		local prof = SinProfiles[plr.UserId]
-		if prof and prof.SinName and #prof.SinName > 0 then
-			return "The Sin of " .. prof.SinName
+		if prof and prof.SinName and #tostring(prof.SinName) > 0 then
+			return "The Sin of " .. tostring(prof.SinName)
 		end
 		return "The Sin of ???"
 	end
 
 	if role == "OG" then
 		local prof = OgProfiles[plr.UserId]
-		if prof and prof.OgName and #prof.OgName > 0 then
-			return prof.OgName
+		if prof and prof.OgName and #tostring(prof.OgName) > 0 then
+			return tostring(prof.OgName)
 		end
 		return "OG"
 	end
 
 	if role == "Custom" then
 		local prof = CustomTags[plr.UserId]
-		if prof and prof.TagText and #prof.TagText > 0 then
-			return prof.TagText
+		if prof and prof.TagText and #tostring(prof.TagText) > 0 then
+			return tostring(prof.TagText)
 		end
 		return "Custom"
 	end
@@ -979,23 +1381,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 		if scan then scan:Destroy() end
 	end
 
-	local sparkle = btn:FindFirstChild("Sparkles")
-	if hasEffect(effects, "Sparkles") then
-		if not sparkle then
-			sparkle = Instance.new("ImageLabel")
-			sparkle.Name = "Sparkles"
-			sparkle.BackgroundTransparency = 1
-			sparkle.Size = UDim2.new(1, 0, 1, 0)
-			sparkle.Position = UDim2.new(0, 0, 0, 0)
-			sparkle.ZIndex = 2
-			sparkle.Image = "rbxassetid://3912352814"
-			sparkle.ImageTransparency = 0.78
-			sparkle.Parent = btn
-		end
-	else
-		if sparkle then sparkle:Destroy() end
-	end
-
 	local t = 0
 	local baseBtnSize = btn.Size
 	local baseBtnRot = btn.Rotation
@@ -1033,13 +1418,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			btn.Rotation = baseBtnRot
 		end
 
-		if hasEffect(effects, "Flicker") and topLabel then
-			local v = (math.sin(t * 22) * 0.5 + 0.5)
-			topLabel.TextTransparency = (v > 0.88) and 0.25 or 0
-		elseif topLabel then
-			topLabel.TextTransparency = 0
-		end
-
 		if hasEffect(effects, "BounceText") and topLabel then
 			local y = math.sin(t * 6) * 1.2
 			topLabel.Position = UDim2.new(0, 5, 0, 3 + y)
@@ -1052,10 +1430,6 @@ local function applyTagEffects(plr, role, btn, baseGrad, stroke, topLabel, botto
 			if g then
 				g.Offset = Vector2.new(0, (t * 0.6) % 1)
 			end
-		end
-
-		if sparkle then
-			sparkle.ImageTransparency = 0.70 + (math.sin(t * 3.0) * 0.12)
 		end
 
 		if topLabel then topLabel.TextColor3 = profile.TopTextColor end
@@ -1314,7 +1688,6 @@ local function showJoinTpPopup(plr)
 
 	JoinPopupByUserId[plr.UserId] = frame
 
-	-- Fade in
 	local tinf = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tout = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
@@ -1328,7 +1701,6 @@ local function showJoinTpPopup(plr)
 	t3:Play()
 	t4:Play()
 
-	-- Auto close after 2 seconds total (including fade out)
 	task.delay(1.65, function()
 		if not frame or not frame.Parent then return end
 		local o1 = TweenService:Create(frame, tout, { BackgroundTransparency = 1 })
@@ -1379,7 +1751,6 @@ local function showGlitchTextPopup(text, soundId, textColor)
 	label.ZIndex = 6001
 	label.Parent = frame
 
-	-- 30 percent volume intros
 	if soundId and soundId ~= "" then
 		playArrivalSound(gui, soundId, 0.9 * INTRO_VOLUME_MULT)
 	end
@@ -1423,109 +1794,13 @@ end
 local function showOwnerArrivalGlitch()
 	ensureGui()
 	if isOwner(LocalPlayer) or isCoOwner(LocalPlayer) then return end
-
-	local overlay = Instance.new("Frame")
-	overlay.Name = "OwnerArrivalOverlay"
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.BorderSizePixel = 0
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.15
-	overlay.ZIndex = 5000
-	overlay.Parent = gui
-
-	local noise = Instance.new("ImageLabel")
-	noise.Name = "Noise"
-	noise.BackgroundTransparency = 1
-	noise.Size = UDim2.new(1, 0, 1, 0)
-	noise.Image = "rbxassetid://5028857084"
-	noise.ImageTransparency = 0.5
-	noise.ZIndex = 5001
-	noise.Parent = overlay
-
-	local msg = Instance.new("TextLabel")
-	msg.Name = "Msg"
-	msg.BackgroundTransparency = 1
-	msg.AnchorPoint = Vector2.new(0.5, 0.5)
-	msg.Position = UDim2.new(0.5, 0, 0.5, 0)
-	msg.Size = UDim2.new(0, 700, 0, 120)
-	msg.Font = Enum.Font.GothamBlack
-	msg.TextSize = 44
-	msg.Text = OWNER_ARRIVAL_TEXT
-	msg.TextColor3 = Color3.fromRGB(255, 255, 80)
-	msg.TextStrokeTransparency = 0.25
-	msg.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	msg.ZIndex = 5002
-	msg.Parent = overlay
-
-	-- 30 percent volume
-	playArrivalSound(gui, OWNER_ARRIVAL_SOUND_ID, 0.9 * INTRO_VOLUME_MULT)
-
-	task.spawn(function()
-		local rng = Random.new()
-		local t0 = os.clock()
-		while overlay and overlay.Parent and (os.clock() - t0) < 1.2 do
-			msg.Position = UDim2.new(0.5, rng:NextInteger(-10, 10), 0.5, rng:NextInteger(-8, 8))
-			noise.Rotation = rng:NextInteger(0, 360)
-			noise.ImageTransparency = rng:NextNumber(0.30, 0.75)
-			overlay.BackgroundTransparency = rng:NextNumber(0.05, 0.25)
-			task.wait(rng:NextNumber(0.03, 0.06))
-		end
-		if overlay and overlay.Parent then overlay:Destroy() end
-	end)
+	showGlitchTextPopup(OWNER_ARRIVAL_TEXT, OWNER_ARRIVAL_SOUND_ID, Color3.fromRGB(255, 255, 80))
 end
 
 local function showCoOwnerArrivalGlitch()
 	ensureGui()
 	if isCoOwner(LocalPlayer) or isOwner(LocalPlayer) then return end
-
-	local overlay = Instance.new("Frame")
-	overlay.Name = "CoOwnerArrivalOverlay"
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.BorderSizePixel = 0
-	overlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	overlay.BackgroundTransparency = 0.35
-	overlay.ZIndex = 5000
-	overlay.Parent = gui
-
-	local noise = Instance.new("ImageLabel")
-	noise.Name = "Noise"
-	noise.BackgroundTransparency = 1
-	noise.Size = UDim2.new(1, 0, 1, 0)
-	noise.Image = "rbxassetid://5028857084"
-	noise.ImageTransparency = 0.55
-	noise.ZIndex = 5001
-	noise.Parent = overlay
-
-	local msg = Instance.new("TextLabel")
-	msg.Name = "Msg"
-	msg.BackgroundTransparency = 1
-	msg.AnchorPoint = Vector2.new(0.5, 0.5)
-	msg.Position = UDim2.new(0.5, 0, 0.5, 0)
-	msg.Size = UDim2.new(0, 740, 0, 120)
-	msg.Font = Enum.Font.GothamBlack
-	msg.TextSize = 44
-	msg.Text = COOWNER_ARRIVAL_TEXT
-	msg.TextColor3 = Color3.fromRGB(0, 0, 0)
-	msg.TextStrokeTransparency = 0.65
-	msg.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	msg.ZIndex = 5002
-	msg.Parent = overlay
-
-	-- 30 percent volume
-	playArrivalSound(gui, COOWNER_ARRIVAL_SOUND_ID, 0.9 * INTRO_VOLUME_MULT)
-
-	task.spawn(function()
-		local rng = Random.new()
-		local t0 = os.clock()
-		while overlay and overlay.Parent and (os.clock() - t0) < 1.0 do
-			msg.Position = UDim2.new(0.5, rng:NextInteger(-12, 12), 0.5, rng:NextInteger(-10, 10))
-			noise.Rotation = rng:NextInteger(0, 360)
-			noise.ImageTransparency = rng:NextNumber(0.35, 0.78)
-			overlay.BackgroundTransparency = rng:NextNumber(0.10, 0.55)
-			task.wait(rng:NextNumber(0.03, 0.06))
-		end
-		if overlay and overlay.Parent then overlay:Destroy() end
-	end)
+	showGlitchTextPopup(COOWNER_ARRIVAL_TEXT, COOWNER_ARRIVAL_SOUND_ID, Color3.fromRGB(0, 0, 0))
 end
 
 local function tryShowSinIntro(userId)
@@ -1546,7 +1821,6 @@ end
 local function tryShowCustomUserIntro(userId)
 	local plr = Players:GetPlayerByUserId(userId)
 	if not plr then return end
-	if plr.UserId == LocalPlayer.UserId then return end
 	if CustomIntroShown[userId] then return end
 
 	local intro = CustomUserIntros[userId]
@@ -1747,6 +2021,14 @@ end
 --------------------------------------------------------------------
 -- SOS AND AK UPDATES
 --------------------------------------------------------------------
+local function textHasAk(text)
+	if type(text) ~= "string" then return false end
+	if text == AK_MARKER_1 or text == AK_MARKER_2 then return true end
+	if text:find(AK_MARKER_1, 1, true) then return true end
+	if text:find(AK_MARKER_2, 1, true) then return true end
+	return false
+end
+
 local function onSosActivated(userId)
 	if typeof(userId) ~= "number" then return end
 	SosUsers[userId] = true
@@ -1766,14 +2048,6 @@ local function onAkSeen(userId)
 	AkUsers[userId] = true
 	local plr = Players:GetPlayerByUserId(userId)
 	if plr then refreshAllTagsForPlayer(plr) end
-end
-
-local function textHasAk(text)
-	if type(text) ~= "string" then return false end
-	if text == AK_MARKER_1 or text == AK_MARKER_2 then return true end
-	if text:find(AK_MARKER_1, 1, true) then return true end
-	if text:find(AK_MARKER_2, 1, true) then return true end
-	return false
 end
 
 --------------------------------------------------------------------
@@ -1858,7 +2132,6 @@ local function handleIncoming(uid, text)
 	if applyCommandFrom(uid, text) then return end
 
 	if text == SOS_ACTIVATE_MARKER then
-		-- New behavior: play ping + show TP popup for 2 seconds
 		local plr = Players:GetPlayerByUserId(uid)
 		if plr and uid ~= LocalPlayer.UserId then
 			playArrivalSound(gui or ensureGui(), SOS_JOIN_PING_SOUND_ID, SOS_JOIN_PING_VOLUME)
@@ -1910,9 +2183,13 @@ end
 -- INIT
 --------------------------------------------------------------------
 local function init()
+	print("SOS init ran")
+
 	ensureGui()
 	ensureStatsPopup()
 	ensureBroadcastPanel()
+	ensureSfxPanel()
+	ensureTrailMenu()
 
 	if broadcastSOS then
 		broadcastSOS.MouseButton1Click:Connect(function()
@@ -1936,6 +2213,11 @@ local function init()
 		hookPlayer(plr)
 		RepliedToActivationUserId[plr.UserId] = nil
 		task.defer(reconcilePresence)
+
+		-- Optional: show custom intro on join (kept subtle, does nothing unless they exist in CustomUserIntros)
+		task.delay(0.2, function()
+			tryShowCustomUserIntro(plr.UserId)
+		end)
 	end)
 
 	Players.PlayerRemoving:Connect(function(plr)
@@ -1959,7 +2241,7 @@ local function init()
 	onSosActivated(LocalPlayer.UserId)
 	trySendChat(SOS_ACTIVATE_MARKER)
 
-	print("SOS Tags loaded. Presets ready. Join popup enabled.")
+	print("SOS Tags loaded. Presets ready. Menus restored. XTCY intro enabled.")
 end
 
 task.delay(INIT_DELAY, init)
