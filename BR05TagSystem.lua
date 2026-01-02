@@ -272,7 +272,7 @@ local TagEffectProfiles = {
 	},
 
 	-- Audio Sam (4689208231)
-	[1234] = {
+	[9243834086] = {
 		Gradient1 = SAM_BLUE,
 		Gradient2 = SAM_PURPLE,
 		Gradient3 = SAM_BLACK,
