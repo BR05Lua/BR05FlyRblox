@@ -130,15 +130,16 @@ local OgProfiles = {
 
 -- Custom tags (NOTE: duplicate keys removed so the script does not explode quietly)
 local CustomTags = {
-[2630250935] = { TagText = "Co-Owner" },
-[8299334811] = { TagText = "Fake Cinny" },
-[7452991350] = { TagText = "OG XTCY" },
-[9072904295] = { TagText = "OG XTCY" },
-[7444930172] = { TagText = "OG XTCY" },
-[754232813]  = { TagText = "Ghoul" },
-[9243834086] = { TagText = "Audio Sam" },
-[4689208231] = { TagText = "Shiroyasha" },
-[2440542440] = { TagText = "Maze" },
+    [2630250935] = { TagText = "Co-Owner" },
+    [8299334811] = { TagText = "Fake Cinny" },
+    [7452991350] = { TagText = "OG XTCY" },
+    [9072904295] = { TagText = "OG XTCY" },
+    [7444930172] = { TagText = "OG XTCY" },
+    [754232813]  = { TagText = "Ghoul" },
+    [9243834086] = { TagText = "Audio Sam" },
+    [4689208231] = { TagText = "Shiroyasha" },
+    [2440542440] = { TagText = "Maze" },
+	[2440542440] = { TagText = "Maze" },
 }
 
 --------------------------------------------------------------------
@@ -336,6 +337,18 @@ local TagEffectProfiles = {
 		Gradient1 = Color3.fromRGB(255, 255, 255),
 		Gradient2 = Color3.fromRGB(0, 0, 0),
 		Gradient3 = Color3.fromRGB(255, 255, 255),
+		SpinGradient = true,
+		ScrollGradient = false,
+		TopTextColor = Color3.fromRGB(255, 255, 255),
+		BottomTextColor = YELLOW,
+		Effects = { "Pulse", "Scanline" },
+	},
+
+	--Co Owner Cinny
+	[2630250935] = {
+		Gradient1 = Color3.fromRGB(255, 255, 255),
+		Gradient2 = Color3.fromRGB(125, 216, 215),
+		Gradient3 = BLACK,
 		SpinGradient = true,
 		ScrollGradient = false,
 		TopTextColor = Color3.fromRGB(255, 255, 255),
