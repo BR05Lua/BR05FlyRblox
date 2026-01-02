@@ -60,17 +60,17 @@ local SOS_JOIN_PING_VOLUME = 0.10
 local CustomUserIntros = {
 	[7452991350] = {
 		Text = "XTCY Has Been Summoned.",
-		SoundId = "rbxassetid://109263303377273",
+		SoundId = "rbxassetid://7018424260",
 		TextColor = Color3.fromRGB(200, 0, 0),
 	},
 	[7444930172] = {
 		Text = "XTCY Has Been Summoned.",
-		SoundId = "rbxassetid://109263303377273",
+		SoundId = "rbxassetid://7018424260",
 		TextColor = Color3.fromRGB(200, 0, 0),
 	},
 	[9072904295] = {
 		Text = "XTCY Has Been Summoned.",
-		SoundId = "rbxassetid://109263303377273",
+		SoundId = "rbxassetid://7018424260",
 		TextColor = Color3.fromRGB(200, 0, 0),
 	},
 }
