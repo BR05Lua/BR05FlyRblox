@@ -832,7 +832,7 @@ local CustomRun = {
 	["Tall"] = 134010853417610,
 	["Officer Earl"] = 104646820775114,
 	["AOT Titan"] = 95363958550738,
-	["TF2"] = 122588181027551,
+	["Animal"] = 87721497492370,
 	["Captain JS"] = 87806542116815,
 	["Ninja Sprint"] = 123763532572423,
 	["IDEK"] = 101293881003047,
@@ -851,6 +851,10 @@ local CustomRun = {
 
 	["A Spider"] = 89356423918695,
 	["Ballora"] = 75557142930836,
+	["unknown"] = 123456,
+	["unknown"] = 123456,
+	["unknown"] = 123456,
+	["unknown"] = 123456,
 }
 
 -- Custom Walk removed per request
