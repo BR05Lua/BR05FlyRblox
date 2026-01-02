@@ -826,6 +826,14 @@ local CustomIdle = {
 	["A Vibing Spider"] = 86005347720103,
 	["Spiderman"] = 74785222555193,
 	["Ballora"] = 88392341793465,
+	["Backpack"] = 114948866128817,
+	["Cute Sit"] = 86546752992173,
+	["Animal"] = 79105016523357,
+	["Standing"] = 127972564618207,
+	["Shy"] = 123358425539087,
+	["Protagonist"] = 92686470851073,
+	["Arms Crossed"] = 132861892011980,
+	["The Zombie"] = 115485274167727,
 }
 
 local CustomRun = {
@@ -851,10 +859,8 @@ local CustomRun = {
 
 	["A Spider"] = 89356423918695,
 	["Ballora"] = 75557142930836,
-	["unknown"] = 123456,
-	["unknown"] = 123456,
-	["unknown"] = 123456,
-	["unknown"] = 123456,
+	["Pennywise Strut"] = 79671615133463,
+	["The Zombie"] = 113076603308515,
 }
 
 -- Custom Walk removed per request
