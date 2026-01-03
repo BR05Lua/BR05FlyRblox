@@ -2841,534 +2841,547 @@ task.delay(INIT_DELAY, init)
 
 
 --------------------------------------------------------------------
--- VCB TIMER ADDON (PASTE BELOW THE MAIN SCRIPT)
+-- VCB TIMER (PASTE BELOW THE SOS TAGS SCRIPT)
+-- Adds a VCB button + timer bar left of Refresh, with a dropdown menu below it.
+-- Also starts a 5:00 timer if YOU type "vcb" in chat.
+-- If timer hits 00:00 while not paused, it tries to rejoin the SAME server.
+-- If this breaks, blame the Roblox gremlins, not me.
 --------------------------------------------------------------------
-do
-	local Players = game:GetService("Players")
-	local UserInputService = game:GetService("UserInputService")
-	local TextChatService = game:FindService("TextChatService")
-	local RunService = game:GetService("RunService")
-	local TweenService = game:GetService("TweenService")
-	local TeleportService = game:GetService("TeleportService")
 
-	local LocalPlayer = Players.LocalPlayer
+-- Services we need (safe even if already used above)
+local TeleportService = game:GetService("TeleportService")
 
-	local GUI_NAME = "SOS_Tags_UI"
-	local REFRESH_BUTTON_NAME = "RefreshButton"
+-- Wait for UI helpers and the refresh button from the main script
+local function waitForRefresh()
+	-- make sure base UI exists
+	if typeof(ensureGui) == "function" then
+		ensureGui()
+	end
 
-	local GAP = 10
-	local BTN_H = 36
-	local VCB_W = 86
-	local TIME_W = 170
+	-- create refresh early so we can align to it, without duplicating
+	if typeof(ensureRefreshButton) == "function" then
+		pcall(function()
+			ensureRefreshButton()
+		end)
+	end
 
-	local PANEL_W = 520
-	local PANEL_H = 190
+	-- wait until refreshBtn is actually alive
+	while not (refreshBtn and refreshBtn.Parent) do
+		task.wait(0.05)
+	end
+end
 
-	local DEFAULT_5 = 5 * 60
-	local DEFAULT_6 = 6 * 60
+-- VCB timer state
+local VCB = {
+	Duration = 0,
+	Remaining = 0,
+	Running = false,
+	Paused = false,
+	EndAt = 0,
+}
 
-	local TIMER_RED = Color3.fromRGB(255, 80, 80)
-	local TEXT_WHITE = Color3.fromRGB(245, 245, 245)
-	local TEXT_GREY = Color3.fromRGB(180, 180, 180)
+local vcbBtn
+local vcbBar
+local vcbMenu
+local vcbMenuOpen = false
 
-	local function waitForGuiAndRefresh()
-		local pg = LocalPlayer:WaitForChild("PlayerGui")
-		while true do
-			local gui = pg:FindFirstChild(GUI_NAME)
-			if gui then
-				local refresh = gui:FindFirstChild(REFRESH_BUTTON_NAME)
-				if refresh and refresh:IsA("TextButton") then
-					return gui, refresh
-				end
-			end
-			task.wait(0.1)
+local menuTimeBig
+local menuStatus
+local menuCloseBtn
+local btnStart5
+local btnStart6
+local btnStop
+local btnPause
+local btnResume
+
+local miniCountdown -- red numbers next to VCB button when menu is closed
+
+local vcbTickConn
+
+local function clamp(n, a, b)
+	return math.max(a, math.min(b, n))
+end
+
+local function formatMMSS(sec)
+	sec = math.max(0, math.floor(sec + 0.0001))
+	local m = math.floor(sec / 60)
+	local s = sec % 60
+	return string.format("%02d:%02d", m, s)
+end
+
+local function updateTopBarText()
+	if not vcbBar then return end
+
+	local t = formatMMSS(VCB.Remaining)
+	-- White text, red numbers only
+	vcbBar.RichText = true
+	vcbBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+	vcbBar.Text = 'Time left: <font color="#ff3c3c">' .. t .. "</font>"
+
+	-- Mini red countdown only when menu closed and timer active
+	local showMini = (not vcbMenuOpen) and (VCB.Remaining > 0) and (VCB.Running or VCB.Paused)
+	if miniCountdown then
+		miniCountdown.Visible = showMini
+		miniCountdown.Text = t
+	end
+end
+
+local function updateMenuText()
+	if not vcbMenu then return end
+
+	if menuTimeBig then
+		menuTimeBig.Text = formatMMSS(VCB.Remaining)
+	end
+
+	if menuStatus then
+		if VCB.Paused then
+			menuStatus.Text = "Paused. Timer will not rejoin you."
+		elseif VCB.Running then
+			menuStatus.Text = "Running. Will rejoin at 00:00 unless paused."
+		else
+			menuStatus.Text = "Ready. Start when you get VCB."
 		end
 	end
 
-	local function makeCorner(parent, r)
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(0, r or 12)
-		c.Parent = parent
-		return c
+	-- Resume only makes sense if paused and has time left
+	if btnResume then
+		btnResume.Visible = (VCB.Paused and VCB.Remaining > 0)
 	end
 
-	local function makeStroke(parent, thickness, color, transparency)
-		local s = Instance.new("UIStroke")
-		s.Color = color or Color3.fromRGB(0, 0, 0)
-		s.Thickness = thickness or 2
-		s.Transparency = transparency or 0.25
-		s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		s.Parent = parent
-		return s
+	updateTopBarText()
+end
+
+local function stopTick()
+	if vcbTickConn then
+		pcall(function() vcbTickConn:Disconnect() end)
+	end
+	vcbTickConn = nil
+end
+
+local function tryRejoinSameServer()
+	-- Try same server instance first
+	local ok = pcall(function()
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+	end)
+
+	-- Fallback: normal rejoin (different server) if same-instance fails
+	if not ok then
+		pcall(function()
+			TeleportService:Teleport(game.PlaceId, LocalPlayer)
+		end)
+	end
+end
+
+local function ensureTick()
+	if vcbTickConn then return end
+
+	vcbTickConn = RunService.RenderStepped:Connect(function()
+		if VCB.Running then
+			local rem = VCB.EndAt - os.clock()
+			if rem <= 0 then
+				VCB.Remaining = 0
+				VCB.Running = false
+				VCB.Paused = false
+				updateMenuText()
+				stopTick()
+
+				-- If it ended and you did not pause it, rejoin same server
+				tryRejoinSameServer()
+				return
+			end
+
+			VCB.Remaining = rem
+			updateMenuText()
+		end
+	end)
+end
+
+local function startTimer(seconds)
+	seconds = tonumber(seconds) or 0
+	seconds = math.max(0, seconds)
+
+	VCB.Duration = seconds
+	VCB.Remaining = seconds
+	VCB.Paused = false
+
+	if seconds <= 0 then
+		VCB.Running = false
+		stopTick()
+		updateMenuText()
+		return
 	end
 
-	local function makeGlass(parent)
-		parent.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-		parent.BackgroundTransparency = 0.18
+	VCB.Running = true
+	VCB.EndAt = os.clock() + seconds
+	ensureTick()
+	updateMenuText()
+end
 
-		local grad = Instance.new("UIGradient")
-		grad.Rotation = 90
-		grad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 18, 22)),
-			ColorSequenceKeypoint.new(0.4, Color3.fromRGB(10, 10, 12)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 6, 8)),
-		})
-		grad.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.05),
-			NumberSequenceKeypoint.new(1, 0.20),
-		})
-		grad.Parent = parent
+local function pauseTimer()
+	if not VCB.Running then
+		VCB.Paused = true
+		updateMenuText()
+		return
 	end
 
-	local function makeTopButton(parent, txt)
-		local b = Instance.new("TextButton")
-		b.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		b.BackgroundTransparency = 0.18
-		b.BorderSizePixel = 0
-		b.AutoButtonColor = true
-		b.Text = txt or "Button"
-		b.Font = Enum.Font.GothamBold
-		b.TextSize = 14
-		b.TextColor3 = TEXT_WHITE
-		b.Parent = parent
-		makeCorner(b, 12)
-		makeStroke(b, 2, Color3.fromRGB(200, 40, 40), 0.15)
+	VCB.Remaining = math.max(0, VCB.EndAt - os.clock())
+	VCB.Running = false
+	VCB.Paused = true
+	stopTick()
+	updateMenuText()
+end
 
-		local g = Instance.new("UIGradient")
-		g.Rotation = 90
-		g.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 38)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
-		})
-		g.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.10),
-			NumberSequenceKeypoint.new(1, 0.22),
-		})
-		g.Parent = b
+local function resumeTimer()
+	if not VCB.Paused then return end
+	if VCB.Remaining <= 0 then return end
 
-		return b
+	VCB.Paused = false
+	VCB.Running = true
+	VCB.EndAt = os.clock() + VCB.Remaining
+	ensureTick()
+	updateMenuText()
+end
+
+local function stopTimer()
+	VCB.Duration = 0
+	VCB.Remaining = 0
+	VCB.Running = false
+	VCB.Paused = false
+	stopTick()
+	updateMenuText()
+end
+
+local function setMenuOpen(open)
+	vcbMenuOpen = open and true or false
+	if vcbMenu then
+		vcbMenu.Visible = vcbMenuOpen
+	end
+	updateTopBarText()
+end
+
+local function layoutVCBRow()
+	-- Keep it lined up with Refresh like your screenshots
+	if not (refreshBtn and refreshBtn.Parent and vcbBtn and vcbBar) then return end
+
+	local REFRESH_W = refreshBtn.Size.X.Offset
+	local REFRESH_POS_X = refreshBtn.Position.X.Offset
+	local REFRESH_POS_Y = refreshBtn.Position.Y.Offset
+	local ROW_Y = REFRESH_POS_Y
+
+	local GAP = 10
+	local VCB_W = 90
+	local BAR_W_DEFAULT = 180
+	local BAR_W_MIN = 120
+
+	local cam = workspace.CurrentCamera
+	local vw = (cam and cam.ViewportSize.X) or 1280
+	local rightEdge = vw + REFRESH_POS_X -- because refresh uses AnchorPoint 1,0 and Position X.Offset is negative
+	local refreshLeftEdge = rightEdge - REFRESH_W
+
+	-- Compute bar width so nothing goes off-screen
+	local barW = BAR_W_DEFAULT
+	local totalW = VCB_W + GAP + barW + GAP + REFRESH_W
+	local leftEdge = rightEdge - totalW
+
+	if leftEdge < 10 then
+		local deficit = 10 - leftEdge
+		barW = math.max(BAR_W_MIN, barW - deficit)
 	end
 
-	local function clamp(n, a, b)
-		if n < a then return a end
-		if n > b then return b end
-		return n
-	end
+	totalW = VCB_W + GAP + barW + GAP + REFRESH_W
+	leftEdge = rightEdge - totalW
 
-	local function formatMMSS(seconds)
-		seconds = math.max(0, math.floor(seconds + 0.5))
-		local m = math.floor(seconds / 60)
-		local s = seconds % 60
-		return string.format("%02d:%02d", m, s)
-	end
+	-- Position bar to the LEFT of refresh
+	vcbBar.Size = UDim2.new(0, barW, 0, refreshBtn.Size.Y.Offset)
+	vcbBar.AnchorPoint = Vector2.new(1, 0)
+	vcbBar.Position = UDim2.new(1, REFRESH_POS_X - REFRESH_W - GAP, 0, ROW_Y)
 
-	local function chatHasVCB(text)
-		if type(text) ~= "string" then return false end
-		local t = string.lower(text)
-		return (t == "vcb") or (string.find(t, "%f[%a]vcb%f[%A]") ~= nil)
-	end
-
-	local gui, refreshBtn = waitForGuiAndRefresh()
-
-	-- Top row items
-	local vcbBtn = makeTopButton(gui, "VCB")
-	vcbBtn.Name = "VCB_Button"
+	-- Position VCB button to the LEFT of bar
+	vcbBtn.Size = UDim2.new(0, VCB_W, 0, refreshBtn.Size.Y.Offset)
 	vcbBtn.AnchorPoint = Vector2.new(1, 0)
-	vcbBtn.Size = UDim2.new(0, VCB_W, 0, BTN_H)
+	vcbBtn.Position = UDim2.new(1, REFRESH_POS_X - REFRESH_W - GAP - barW - GAP, 0, ROW_Y)
 
-	local timePill = Instance.new("TextLabel")
-	timePill.Name = "VCB_TimePill"
-	timePill.AnchorPoint = Vector2.new(1, 0)
-	timePill.Size = UDim2.new(0, TIME_W, 0, BTN_H)
-	timePill.BorderSizePixel = 0
-	timePill.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-	timePill.BackgroundTransparency = 0.18
-	timePill.Font = Enum.Font.GothamBold
-	timePill.TextSize = 14
-	timePill.TextColor3 = TEXT_WHITE
-	timePill.TextXAlignment = Enum.TextXAlignment.Center
-	timePill.TextYAlignment = Enum.TextYAlignment.Center
-	timePill.RichText = true
-	timePill.Text = "Time left: <font color=\"rgb(255,80,80)\">00:00</font>"
-	timePill.Parent = gui
-	makeCorner(timePill, 12)
-	makeStroke(timePill, 2, Color3.fromRGB(200, 40, 40), 0.15)
-	do
-		local g = Instance.new("UIGradient")
-		g.Rotation = 90
-		g.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 38)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
-		})
-		g.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.10),
-			NumberSequenceKeypoint.new(1, 0.22),
-		})
-		g.Parent = timePill
+	-- Mini countdown right next to the VCB button
+	if miniCountdown then
+		miniCountdown.Position = UDim2.new(1, -4, 0.5, 0)
 	end
 
+	-- Dropdown menu stays below the row, clamped on screen
+	if vcbMenu and vcbMenu.Parent then
+		local panelW = VCB_W + GAP + barW
+		vcbMenu.Size = UDim2.new(0, panelW, 0, 170)
+
+		task.defer(function()
+			if not (vcbMenu and vcbMenu.Parent and vcbBtn and vcbBtn.Parent) then return end
+			local cam2 = workspace.CurrentCamera
+			local vw2 = (cam2 and cam2.ViewportSize.X) or 1280
+
+			local abs = vcbBtn.AbsolutePosition
+			local x = abs.X
+			local y = abs.Y + vcbBtn.AbsoluteSize.Y + 10
+
+			-- Clamp so it never goes off screen
+			x = clamp(x, 10, vw2 - panelW - 10)
+
+			vcbMenu.Position = UDim2.new(0, x, 0, y)
+		end)
+	end
+end
+
+local function buildVCBUI()
+	waitForRefresh()
+	ensureGui()
+
+	-- VCB button
+	vcbBtn = Instance.new("TextButton")
+	vcbBtn.Name = "VCB_Button"
+	vcbBtn.BorderSizePixel = 0
+	vcbBtn.AutoButtonColor = true
+	vcbBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	vcbBtn.BackgroundTransparency = 0.18
+	vcbBtn.Text = "VCB"
+	vcbBtn.Font = Enum.Font.GothamBold
+	vcbBtn.TextSize = 14
+	vcbBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	vcbBtn.Parent = gui
+	makeCorner(vcbBtn, 12)
+	makeStroke(vcbBtn, 2, Color3.fromRGB(200, 40, 40), 0.15)
 
-	local vcbMini = Instance.new("TextLabel")
-	vcbMini.Name = "VCB_MiniTime"
-	vcbMini.BackgroundTransparency = 1
-	vcbMini.Size = UDim2.new(1, -10, 0, 14)
-	vcbMini.Position = UDim2.new(0, 5, 1, -16)
-	vcbMini.Font = Enum.Font.GothamBold
-	vcbMini.TextSize = 12
-	vcbMini.TextColor3 = TIMER_RED
-	vcbMini.TextXAlignment = Enum.TextXAlignment.Right
-	vcbMini.Text = ""
-	vcbMini.Visible = false
-	vcbMini.Parent = vcbBtn
+	local g1 = Instance.new("UIGradient")
+	g1.Rotation = 90
+	g1.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 38)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
+	})
+	g1.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.10),
+		NumberSequenceKeypoint.new(1, 0.22),
+	})
+	g1.Parent = vcbBtn
 
-	-- Panel
-	local panel = Instance.new("Frame")
-	panel.Name = "VCB_TimerPanel"
-	panel.AnchorPoint = Vector2.new(1, 0)
-	panel.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
-	panel.BorderSizePixel = 0
-	panel.Visible = false
-	panel.Parent = gui
-	makeCorner(panel, 16)
-	makeGlass(panel)
-	makeStroke(panel, 2, Color3.fromRGB(200, 40, 40), 0.10)
+	-- Mini red countdown shown only when menu is closed and timer active
+	miniCountdown = Instance.new("TextLabel")
+	miniCountdown.Name = "MiniCountdown"
+	miniCountdown.BackgroundTransparency = 1
+	miniCountdown.AnchorPoint = Vector2.new(0, 0.5)
+	miniCountdown.Size = UDim2.new(0, 64, 0, 18)
+	miniCountdown.Font = Enum.Font.GothamBold
+	miniCountdown.TextSize = 14
+	miniCountdown.TextColor3 = Color3.fromRGB(255, 60, 60)
+	miniCountdown.TextXAlignment = Enum.TextXAlignment.Left
+	miniCountdown.TextYAlignment = Enum.TextYAlignment.Center
+	miniCountdown.Visible = false
+	miniCountdown.Text = "00:00"
+	miniCountdown.Parent = vcbBtn
 
-	local sizeConstraint = Instance.new("UISizeConstraint")
-	sizeConstraint.MinSize = Vector2.new(340, PANEL_H)
-	sizeConstraint.MaxSize = Vector2.new(PANEL_W, PANEL_H)
-	sizeConstraint.Parent = panel
+	-- Timer bar (between VCB and Refresh)
+	vcbBar = Instance.new("TextLabel")
+	vcbBar.Name = "VCB_Bar"
+	vcbBar.BorderSizePixel = 0
+	vcbBar.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	vcbBar.BackgroundTransparency = 0.18
+	vcbBar.Font = Enum.Font.GothamBold
+	vcbBar.TextSize = 14
+	vcbBar.TextXAlignment = Enum.TextXAlignment.Center
+	vcbBar.TextYAlignment = Enum.TextYAlignment.Center
+	vcbBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+	vcbBar.RichText = true
+	vcbBar.Parent = gui
+	makeCorner(vcbBar, 12)
+	makeStroke(vcbBar, 2, Color3.fromRGB(200, 40, 40), 0.15)
 
-	local header = Instance.new("Frame")
-	header.BackgroundTransparency = 1
-	header.Size = UDim2.new(1, -24, 0, 32)
-	header.Position = UDim2.new(0, 12, 0, 10)
-	header.Parent = panel
+	local g2 = Instance.new("UIGradient")
+	g2.Rotation = 90
+	g2.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 38)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 12)),
+	})
+	g2.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.10),
+		NumberSequenceKeypoint.new(1, 0.22),
+	})
+	g2.Parent = vcbBar
+
+	-- Dropdown menu panel (below row)
+	vcbMenu = Instance.new("Frame")
+	vcbMenu.Name = "VCB_Menu"
+	vcbMenu.BorderSizePixel = 0
+	vcbMenu.Visible = false
+	vcbMenu.Parent = gui
+	makeCorner(vcbMenu, 14)
+	makeGlass(vcbMenu)
+	makeStroke(vcbMenu, 2, Color3.fromRGB(200, 40, 40), 0.10)
 
 	local title = Instance.new("TextLabel")
 	title.BackgroundTransparency = 1
-	title.Size = UDim2.new(1, -120, 1, 0)
-	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Position = UDim2.new(0, 12, 0, 8)
+	title.Size = UDim2.new(1, -110, 0, 20)
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 16
+	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.TextColor3 = TEXT_WHITE
+	title.TextColor3 = Color3.fromRGB(245, 245, 245)
 	title.Text = "VCB Timer"
-	title.Parent = header
+	title.Parent = vcbMenu
 
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Name = "Close"
-	closeBtn.AnchorPoint = Vector2.new(1, 0)
-	closeBtn.Position = UDim2.new(1, 0, 0, 2)
-	closeBtn.Size = UDim2.new(0, 98, 0, 28)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.AutoButtonColor = true
-	closeBtn.Text = "Close"
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 14
-	closeBtn.TextColor3 = TEXT_WHITE
-	closeBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-	closeBtn.BackgroundTransparency = 0.20
-	closeBtn.Parent = header
-	makeCorner(closeBtn, 12)
-	makeStroke(closeBtn, 1, Color3.fromRGB(200, 40, 40), 0.25)
+	menuCloseBtn = makeButton(vcbMenu, "Close")
+	menuCloseBtn.AnchorPoint = Vector2.new(1, 0)
+	menuCloseBtn.Position = UDim2.new(1, -12, 0, 6)
+	menuCloseBtn.Size = UDim2.new(0, 90, 0, 28)
 
-	local bigTime = Instance.new("TextLabel")
-	bigTime.BackgroundTransparency = 1
-	bigTime.Position = UDim2.new(0, 18, 0, 44)
-	bigTime.Size = UDim2.new(1, -160, 0, 44)
-	bigTime.Font = Enum.Font.GothamBlack
-	bigTime.TextSize = 40
-	bigTime.TextXAlignment = Enum.TextXAlignment.Left
-	bigTime.TextColor3 = TIMER_RED
-	bigTime.Text = "00:00"
-	bigTime.Parent = panel
+	menuTimeBig = Instance.new("TextLabel")
+	menuTimeBig.BackgroundTransparency = 1
+	menuTimeBig.Position = UDim2.new(0, 12, 0, 32)
+	menuTimeBig.Size = UDim2.new(1, -24, 0, 34)
+	menuTimeBig.Font = Enum.Font.GothamBlack
+	menuTimeBig.TextSize = 30
+	menuTimeBig.TextXAlignment = Enum.TextXAlignment.Left
+	menuTimeBig.TextColor3 = Color3.fromRGB(255, 255, 255)
+	menuTimeBig.Text = "00:00"
+	menuTimeBig.Parent = vcbMenu
 
-	local status = Instance.new("TextLabel")
-	status.BackgroundTransparency = 1
-	status.Position = UDim2.new(0, 18, 0, 92)
-	status.Size = UDim2.new(1, -36, 0, 20)
-	status.Font = Enum.Font.Gotham
-	status.TextSize = 14
-	status.TextXAlignment = Enum.TextXAlignment.Left
-	status.TextColor3 = TEXT_GREY
-	status.Text = "Press Start when you get VCB."
-	status.Parent = panel
+	menuStatus = Instance.new("TextLabel")
+	menuStatus.BackgroundTransparency = 1
+	menuStatus.Position = UDim2.new(0, 12, 0, 66)
+	menuStatus.Size = UDim2.new(1, -24, 0, 18)
+	menuStatus.Font = Enum.Font.Gotham
+	menuStatus.TextSize = 12
+	menuStatus.TextXAlignment = Enum.TextXAlignment.Left
+	menuStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
+	menuStatus.Text = "Ready. Start when you get VCB."
+	menuStatus.Parent = vcbMenu
 
-	-- Stop above Pause
-	local rightControls = Instance.new("Frame")
-	rightControls.BackgroundTransparency = 1
-	rightControls.AnchorPoint = Vector2.new(1, 0)
-	rightControls.Position = UDim2.new(1, -18, 0, 46)
-	rightControls.Size = UDim2.new(0, 120, 0, 70)
-	rightControls.Parent = panel
+	-- Buttons area: 3 columns, stop above pause (column 3)
+	local btnArea = Instance.new("Frame")
+	btnArea.BackgroundTransparency = 1
+	btnArea.Position = UDim2.new(0, 10, 0, 92)
+	btnArea.Size = UDim2.new(1, -20, 1, -102)
+	btnArea.Parent = vcbMenu
 
-	local stopBtn = Instance.new("TextButton")
-	stopBtn.Name = "Stop"
-	stopBtn.Size = UDim2.new(1, 0, 0, 30)
-	stopBtn.Position = UDim2.new(0, 0, 0, 0)
-	stopBtn.BorderSizePixel = 0
-	stopBtn.AutoButtonColor = true
-	stopBtn.Text = "Stop"
-	stopBtn.Font = Enum.Font.GothamBold
-	stopBtn.TextSize = 14
-	stopBtn.TextColor3 = TEXT_WHITE
-	stopBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-	stopBtn.BackgroundTransparency = 0.20
-	stopBtn.Parent = rightControls
-	makeCorner(stopBtn, 12)
-	makeStroke(stopBtn, 1, Color3.fromRGB(200, 40, 40), 0.25)
+	local grid = Instance.new("UIGridLayout")
+	grid.CellPadding = UDim2.new(0, 10, 0, 10)
+	grid.FillDirection = Enum.FillDirection.Horizontal
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.VerticalAlignment = Enum.VerticalAlignment.Top
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = btnArea
 
-	local pauseBtn = Instance.new("TextButton")
-	pauseBtn.Name = "Pause"
-	pauseBtn.Size = UDim2.new(1, 0, 0, 30)
-	pauseBtn.Position = UDim2.new(0, 0, 0, 40)
-	pauseBtn.BorderSizePixel = 0
-	pauseBtn.AutoButtonColor = true
-	pauseBtn.Text = "Pause"
-	pauseBtn.Font = Enum.Font.GothamBold
-	pauseBtn.TextSize = 14
-	pauseBtn.TextColor3 = TEXT_WHITE
-	pauseBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-	pauseBtn.BackgroundTransparency = 0.20
-	pauseBtn.Parent = rightControls
-	makeCorner(pauseBtn, 12)
-	makeStroke(pauseBtn, 1, Color3.fromRGB(200, 40, 40), 0.25)
-
-	-- Bottom row equal sizing
-	local bottomRow = Instance.new("Frame")
-	bottomRow.BackgroundTransparency = 1
-	bottomRow.Position = UDim2.new(0, 18, 1, -62)
-	bottomRow.Size = UDim2.new(1, -36, 0, 44)
-	bottomRow.Parent = panel
-
-	local rowLayout = Instance.new("UIListLayout")
-	rowLayout.FillDirection = Enum.FillDirection.Horizontal
-	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowLayout.Padding = UDim.new(0, 12)
-	rowLayout.Parent = bottomRow
-
-	local function makeRowBtn(text)
-		local b = Instance.new("TextButton")
-		b.BorderSizePixel = 0
-		b.AutoButtonColor = true
-		b.Text = text
-		b.Font = Enum.Font.GothamBold
-		b.TextSize = 14
-		b.TextColor3 = TEXT_WHITE
-		b.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		b.BackgroundTransparency = 0.20
-		b.Parent = bottomRow
-		makeCorner(b, 14)
-		makeStroke(b, 1, Color3.fromRGB(200, 40, 40), 0.25)
-		return b
-	end
-
-	local start5Btn = makeRowBtn("Start 5:00")
-	local start6Btn = makeRowBtn("Start 6:00")
-	local resumeBtn = makeRowBtn("Resume")
-
-	-- Timer state
-	local running = false
-	local paused = false
-	local remaining = 0
-	local endAt = 0
-
-	local function updateUi()
-		local mmss = formatMMSS(remaining)
-		bigTime.Text = mmss
-		timePill.Text = "Time left: <font color=\"rgb(255,80,80)\">" .. mmss .. "</font>"
-
-		local menuOpen = panel.Visible
-		vcbMini.Visible = (not menuOpen) and ((running or paused) and remaining > 0)
-		vcbMini.Text = vcbMini.Visible and mmss or ""
-	end
-
-	local function safeRejoinSameServer()
-		local placeId = game.PlaceId
-		local jobId = game.JobId
-
-		pcall(function()
-			TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
-		end)
-
-		task.delay(0.25, function()
-			pcall(function()
-				TeleportService:Teleport(placeId, LocalPlayer)
-			end)
+	-- We set CellSize after menu is sized in layoutVCBRow
+	local function updateGridCellSize()
+		task.defer(function()
+			if not (btnArea and btnArea.Parent and grid) then return end
+			local w = math.floor((btnArea.AbsoluteSize.X - 20) / 3)
+			local h = 32
+			grid.CellSize = UDim2.new(0, math.max(70, w), 0, h)
 		end)
 	end
+	btnArea:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateGridCellSize)
+	updateGridCellSize()
 
-	local function startTimer(seconds)
-		if type(seconds) ~= "number" then return end
-		seconds = math.floor(seconds)
-		if seconds <= 0 then return end
+	btnStart5 = makeButton(btnArea, "Start 5:00")
+	btnStart5.LayoutOrder = 1
 
-		running = true
-		paused = false
-		remaining = seconds
-		endAt = os.clock() + seconds
+	btnStart6 = makeButton(btnArea, "Start 6:00")
+	btnStart6.LayoutOrder = 2
 
-		status.Text = "Running. Timer will rejoin you when it hits 00:00."
-		updateUi()
-	end
+	btnStop = makeButton(btnArea, "Stop")
+	btnStop.LayoutOrder = 3
 
-	local function pauseTimer()
-		if not running then
-			paused = true
-			status.Text = "Paused. Timer will not rejoin you."
-			updateUi()
-			return
-		end
-		running = false
-		paused = true
-		remaining = math.max(0, endAt - os.clock())
-		status.Text = "Paused. Timer will not rejoin you."
-		updateUi()
-	end
+	btnResume = makeButton(btnArea, "Resume")
+	btnResume.LayoutOrder = 4
 
-	local function resumeTimer()
-		if remaining <= 0 then
-			status.Text = "Nothing to resume. Start 5:00 or 6:00."
-			updateUi()
-			return
-		end
-		if running then
-			status.Text = "Already running."
-			updateUi()
-			return
-		end
-		paused = false
-		running = true
-		endAt = os.clock() + remaining
-		status.Text = "Running. Timer will rejoin you when it hits 00:00."
-		updateUi()
-	end
+	-- Spacer so Pause sits under Stop in column 3
+	local spacer = Instance.new("Frame")
+	spacer.Name = "Spacer"
+	spacer.BackgroundTransparency = 1
+	spacer.LayoutOrder = 5
+	spacer.Parent = btnArea
 
-	local function stopTimer()
-		running = false
-		paused = true
-		remaining = 0
-		status.Text = "Stopped. Timer will not rejoin you."
-		updateUi()
-	end
+	btnPause = makeButton(btnArea, "Pause")
+	btnPause.LayoutOrder = 6
 
-	-- Layout beside Refresh and keep on screen
-	local function layoutTop()
-		if not refreshBtn or not refreshBtn.Parent then return end
-
-		local yScale = refreshBtn.Position.Y.Scale
-		local yOffset = refreshBtn.Position.Y.Offset
-
-		local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-		local totalNeeded = (refreshBtn.Size.X.Offset + GAP + TIME_W + GAP + VCB_W) + 40
-		local timeW = TIME_W
-		if totalNeeded > viewport.X then
-			timeW = clamp(TIME_W - (totalNeeded - viewport.X), 120, TIME_W)
-		end
-
-		timePill.Size = UDim2.new(0, timeW, 0, BTN_H)
-
-		timePill.Position = UDim2.new(1, refreshBtn.Position.X.Offset - (refreshBtn.Size.X.Offset + GAP), yScale, yOffset)
-		vcbBtn.Position = UDim2.new(1, refreshBtn.Position.X.Offset - (refreshBtn.Size.X.Offset + GAP + timeW + GAP), yScale, yOffset)
-
-		local panelY = yOffset + BTN_H + 10
-		panel.Position = UDim2.new(1, refreshBtn.Position.X.Offset, yScale, panelY)
-
-		local maxW = math.max(340, viewport.X - 20)
-		sizeConstraint.MaxSize = Vector2.new(math.min(PANEL_W, maxW), PANEL_H)
-
-		updateUi()
-	end
-
-	layoutTop()
-	if workspace.CurrentCamera then
-		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutTop)
-	end
-
-	local function resizeRowButtons()
-		local w = bottomRow.AbsoluteSize.X
-		local each = math.floor((w - (rowLayout.Padding.Offset * 2)) / 3)
-		start5Btn.Size = UDim2.new(0, each, 1, 0)
-		start6Btn.Size = UDim2.new(0, each, 1, 0)
-		resumeBtn.Size = UDim2.new(0, each, 1, 0)
-	end
-	bottomRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(resizeRowButtons)
-	task.defer(resizeRowButtons)
-
-	local function setPanelOpen(open)
-		panel.Visible = open and true or false
-		updateUi()
-	end
-
-	closeBtn.MouseButton1Click:Connect(function()
-		setPanelOpen(false)
-	end)
-
-	-- IMPORTANT: VCB button does NOT start the timer anymore, it only opens/closes the menu
+	-- Button wiring (no timer starts on close, only on Start buttons or your chat "vcb")
 	vcbBtn.MouseButton1Click:Connect(function()
-		setPanelOpen(not panel.Visible)
+		setMenuOpen(not vcbMenuOpen)
+		layoutVCBRow()
 	end)
 
-	start5Btn.MouseButton1Click:Connect(function()
-		startTimer(DEFAULT_5)
+	menuCloseBtn.MouseButton1Click:Connect(function()
+		setMenuOpen(false)
+		layoutVCBRow()
 	end)
 
-	start6Btn.MouseButton1Click:Connect(function()
-		startTimer(DEFAULT_6)
+	btnStart5.MouseButton1Click:Connect(function()
+		startTimer(5 * 60)
 	end)
 
-	resumeBtn.MouseButton1Click:Connect(function()
-		resumeTimer()
+	btnStart6.MouseButton1Click:Connect(function()
+		startTimer(6 * 60)
 	end)
 
-	pauseBtn.MouseButton1Click:Connect(function()
+	btnPause.MouseButton1Click:Connect(function()
 		pauseTimer()
 	end)
 
-	stopBtn.MouseButton1Click:Connect(function()
+	btnResume.MouseButton1Click:Connect(function()
+		resumeTimer()
+	end)
+
+	btnStop.MouseButton1Click:Connect(function()
 		stopTimer()
 	end)
 
-	-- Chat triggers only you
-	LocalPlayer.Chatted:Connect(function(message)
-		if chatHasVCB(message) then
-			startTimer(DEFAULT_5)
+	-- Initial text
+	updateMenuText()
+
+	-- Keep everything aligned and on-screen
+	layoutVCBRow()
+
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			layoutVCBRow()
+		end)
+	end
+end
+
+-- Only YOU can trigger chat start
+local function hookLocalVCBChatStart()
+	local function maybeStartFromText(text)
+		if type(text) ~= "string" then return end
+		local t = text:lower():gsub("%s+", "")
+		if t == "vcb" then
+			-- default chat start = 5 minutes
+			startTimer(5 * 60)
 		end
+	end
+
+	-- Classic chat
+	pcall(function()
+		LocalPlayer.Chatted:Connect(function(msg)
+			maybeStartFromText(msg)
+		end)
 	end)
 
+	-- New chat (sometimes your own message appears here too)
 	if TextChatService and TextChatService.MessageReceived then
 		TextChatService.MessageReceived:Connect(function(msg)
 			if not msg then return end
-			if not msg.TextSource then return end
-			if msg.TextSource.UserId ~= LocalPlayer.UserId then return end
-			if chatHasVCB(msg.Text or "") then
-				startTimer(DEFAULT_5)
-			end
+			local src = msg.TextSource
+			if not src or src.UserId ~= LocalPlayer.UserId then return end
+			maybeStartFromText(msg.Text or "")
 		end)
 	end
+end
 
+-- Build
+task.spawn(function()
+	buildVCBUI()
+	hookLocalVCBChatStart()
+
+	-- Also keep the row aligned if Refresh moves for any reason
 	RunService.RenderStepped:Connect(function()
-		if running then
-			local left = endAt - os.clock()
-			if left <= 0 then
-				remaining = 0
-				running = false
-				updateUi()
-
-				if not paused then
-					status.Text = "Time up. Rejoining..."
-					updateUi()
-					task.defer(safeRejoinSameServer)
-				end
-				return
-			end
-			remaining = left
-			updateUi()
-		else
-			updateUi()
+		if vcbBtn and vcbBar and refreshBtn then
+			layoutVCBRow()
 		end
 	end)
-
-	updateUi()
-end
+end)
