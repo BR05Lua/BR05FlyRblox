@@ -2839,22 +2839,38 @@ end
 
 task.delay(INIT_DELAY, init)
 
--- VCB 5 Minute Timer Addon
+
+-- VCB 5 or 6 Minute Timer Addon
 -- Paste this at the very bottom of your script
+-- Starts when you click one of the buttons OR when YOU type "vcb" in chat (not other players)
+-- Extra: typing "vcb 6" or "vcb6" starts 6 minutes
 
 do
-	local VCB_DURATION = 5 * 60
+	local VCB_DURATION_5 = 5 * 60
+	local VCB_DURATION_6 = 6 * 60
+	local VCB_WORD = "vcb"
 
 	local vcbToggleBtn
 	local vcbPanel
 	local vcbTimeLabel
 	local vcbHintLabel
-	local vcbStartBtn
+	local vcbStart5Btn
+	local vcbStart6Btn
 	local vcbCloseBtn
 
 	local vcbRunning = false
 	local vcbEndAt = 0
-	local vcbConn = nil
+	local vcbTickConn = nil
+	local vcbLayoutConn = nil
+
+	local lastDuration = VCB_DURATION_5
+
+	local VCB_W = 58
+	local VCB_H = 36
+	local GAP = 10
+
+	local PANEL_W = 380
+	local PANEL_H = 176
 
 	local function vcbFormatTime(sec)
 		sec = math.max(0, math.floor(sec + 0.5))
@@ -2863,18 +2879,52 @@ do
 		return string.format("%02d:%02d", m, s)
 	end
 
-	local function vcbStopLoop()
-		if vcbConn then
-			pcall(function() vcbConn:Disconnect() end)
-		end
-		vcbConn = nil
+	local function vcbDurationLabel(dur)
+		if dur == VCB_DURATION_6 then return "06:00" end
+		return "05:00"
 	end
 
-	local function vcbStartLoop()
-		vcbStopLoop()
-		vcbConn = RunService.RenderStepped:Connect(function()
+	local function vcbResetUI()
+		if vcbTimeLabel then
+			vcbTimeLabel.Text = vcbDurationLabel(lastDuration)
+		end
+		if vcbHintLabel then
+			vcbHintLabel.Text = "Press when you get VCB so you can see how long you have left."
+		end
+	end
+
+	local function vcbStopTick()
+		if vcbTickConn then
+			pcall(function() vcbTickConn:Disconnect() end)
+		end
+		vcbTickConn = nil
+	end
+
+	local function vcbStartTimer(duration)
+		if typeof(duration) ~= "number" then duration = VCB_DURATION_5 end
+		duration = math.clamp(duration, 1, 60 * 30)
+
+		lastDuration = duration
+		vcbRunning = true
+		vcbEndAt = os.clock() + duration
+
+		if vcbPanel then
+			vcbPanel.Visible = true
+		end
+
+		if vcbTimeLabel then
+			vcbTimeLabel.Text = vcbDurationLabel(duration)
+		end
+		if vcbHintLabel then
+			vcbHintLabel.Text = "Counting down. Good luck, try not to blink."
+		end
+	end
+
+	local function vcbStartTick()
+		vcbStopTick()
+		vcbTickConn = RunService.RenderStepped:Connect(function()
 			if not vcbPanel or not vcbPanel.Parent then
-				vcbStopLoop()
+				vcbStopTick()
 				return
 			end
 
@@ -2886,11 +2936,84 @@ do
 				local left = vcbEndAt - os.clock()
 				if left <= 0 then
 					vcbRunning = false
-					vcbTimeLabel.Text = "00:00"
-					vcbHintLabel.Text = "Time is up. If VCB still isnt here, Roblox said no."
+					if vcbTimeLabel then vcbTimeLabel.Text = "00:00" end
+					if vcbHintLabel then vcbHintLabel.Text = "Time is up. If it still hasnt happened, Roblox said no." end
 				else
-					vcbTimeLabel.Text = vcbFormatTime(left)
+					if vcbTimeLabel then vcbTimeLabel.Text = vcbFormatTime(left) end
 				end
+			end
+		end)
+	end
+
+	local function vcbStopLayout()
+		if vcbLayoutConn then
+			pcall(function() vcbLayoutConn:Disconnect() end)
+		end
+		vcbLayoutConn = nil
+	end
+
+	local function vcbClamp(n, lo, hi)
+		if n < lo then return lo end
+		if n > hi then return hi end
+		return n
+	end
+
+	local function vcbGetViewportSize()
+		local cam = workspace.CurrentCamera
+		if cam and cam.ViewportSize then
+			return cam.ViewportSize.X, cam.ViewportSize.Y
+		end
+		return 1920, 1080
+	end
+
+	local function vcbDoLayout()
+		if not gui or not gui.Parent then return end
+		if not refreshBtn or not refreshBtn.Parent then return end
+		if not vcbToggleBtn or not vcbToggleBtn.Parent then return end
+
+		local vpX, vpY = vcbGetViewportSize()
+
+		local rPos = refreshBtn.AbsolutePosition
+		local rSize = refreshBtn.AbsoluteSize
+
+		local toggleX = rPos.X - GAP - VCB_W
+		local toggleY = rPos.Y
+
+		toggleX = vcbClamp(toggleX, 8, math.max(8, vpX - VCB_W - 8))
+		toggleY = vcbClamp(toggleY, 8, math.max(8, vpY - VCB_H - 8))
+		vcbToggleBtn.Position = UDim2.fromOffset(toggleX, toggleY)
+
+		if vcbPanel and vcbPanel.Parent then
+			local panelX = toggleX
+			local preferBelowY = toggleY + rSize.Y + 6
+			local panelY = preferBelowY
+
+			if (panelY + PANEL_H) > (vpY - 8) then
+				panelY = toggleY - 6 - PANEL_H
+			end
+
+			panelX = vcbClamp(panelX, 8, math.max(8, vpX - PANEL_W - 8))
+			panelY = vcbClamp(panelY, 8, math.max(8, vpY - PANEL_H - 8))
+
+			vcbPanel.Position = UDim2.fromOffset(panelX, panelY)
+		end
+	end
+
+	local function vcbStartLayout()
+		vcbStopLayout()
+		local lastKey = ""
+
+		vcbLayoutConn = RunService.RenderStepped:Connect(function()
+			if not refreshBtn or not refreshBtn.Parent then return end
+			if not vcbToggleBtn or not vcbToggleBtn.Parent then return end
+
+			local p = refreshBtn.AbsolutePosition
+			local s = refreshBtn.AbsoluteSize
+			local key = tostring(p.X) .. "," .. tostring(p.Y) .. "," .. tostring(s.X) .. "," .. tostring(s.Y)
+
+			if key ~= lastKey then
+				lastKey = key
+				vcbDoLayout()
 			end
 		end)
 	end
@@ -2901,9 +3024,9 @@ do
 
 		vcbPanel = Instance.new("Frame")
 		vcbPanel.Name = "VCB_TimerPanel"
-		vcbPanel.AnchorPoint = Vector2.new(1, 0)
-		vcbPanel.Position = UDim2.new(1, -18, 0, 104)
-		vcbPanel.Size = UDim2.new(0, 320, 0, 150)
+		vcbPanel.AnchorPoint = Vector2.new(0, 0)
+		vcbPanel.Position = UDim2.fromOffset(100, 100)
+		vcbPanel.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
 		vcbPanel.BorderSizePixel = 0
 		vcbPanel.Visible = false
 		vcbPanel.ZIndex = 9100
@@ -2947,7 +3070,7 @@ do
 		vcbTimeLabel = Instance.new("TextLabel")
 		vcbTimeLabel.Name = "Time"
 		vcbTimeLabel.BackgroundTransparency = 1
-		vcbTimeLabel.Position = UDim2.new(0, 12, 0, 40)
+		vcbTimeLabel.Position = UDim2.new(0, 12, 0, 38)
 		vcbTimeLabel.Size = UDim2.new(1, -24, 0, 44)
 		vcbTimeLabel.Font = Enum.Font.GothamBlack
 		vcbTimeLabel.TextSize = 40
@@ -2955,51 +3078,88 @@ do
 		vcbTimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		vcbTimeLabel.TextStrokeTransparency = 0.6
 		vcbTimeLabel.ZIndex = 9101
-		vcbTimeLabel.Text = "05:00"
+		vcbTimeLabel.Text = vcbDurationLabel(lastDuration)
 		vcbTimeLabel.Parent = vcbPanel
 
 		vcbHintLabel = Instance.new("TextLabel")
 		vcbHintLabel.Name = "Hint"
 		vcbHintLabel.BackgroundTransparency = 1
-		vcbHintLabel.Position = UDim2.new(0, 12, 0, 88)
-		vcbHintLabel.Size = UDim2.new(1, -24, 0, 18)
+		vcbHintLabel.Position = UDim2.new(0, 12, 0, 86)
+		vcbHintLabel.Size = UDim2.new(1, -24, 0, 36)
 		vcbHintLabel.Font = Enum.Font.Gotham
 		vcbHintLabel.TextSize = 13
 		vcbHintLabel.TextXAlignment = Enum.TextXAlignment.Left
+		vcbHintLabel.TextYAlignment = Enum.TextYAlignment.Top
+		vcbHintLabel.TextWrapped = true
 		vcbHintLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 		vcbHintLabel.ZIndex = 9101
-		vcbHintLabel.Text = "Press Got VCB when you get it, then it counts down 5 minutes."
+		vcbHintLabel.Text = "Press when you get VCB so you can see how long you have left."
 		vcbHintLabel.Parent = vcbPanel
 
-		vcbStartBtn = Instance.new("TextButton")
-		vcbStartBtn.Name = "Start"
-		vcbStartBtn.Position = UDim2.new(0, 12, 1, -44)
-		vcbStartBtn.Size = UDim2.new(1, -24, 0, 32)
-		vcbStartBtn.BorderSizePixel = 0
-		vcbStartBtn.AutoButtonColor = true
-		vcbStartBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		vcbStartBtn.BackgroundTransparency = 0.18
-		vcbStartBtn.Font = Enum.Font.GothamBold
-		vcbStartBtn.TextSize = 14
-		vcbStartBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
-		vcbStartBtn.ZIndex = 9102
-		vcbStartBtn.Text = "Got VCB (Start 5:00)"
-		vcbStartBtn.Parent = vcbPanel
-		makeCorner(vcbStartBtn, 12)
-		makeStroke(vcbStartBtn, 2, Color3.fromRGB(200, 40, 40), 0.15)
+		local row = Instance.new("Frame")
+		row.Name = "Buttons"
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.new(0, 12, 1, -44)
+		row.Size = UDim2.new(1, -24, 0, 32)
+		row.ZIndex = 9102
+		row.Parent = vcbPanel
 
-		vcbStartBtn.MouseButton1Click:Connect(function()
-			vcbRunning = true
-			vcbEndAt = os.clock() + VCB_DURATION
-			vcbTimeLabel.Text = "05:00"
-			vcbHintLabel.Text = "Counting down. You have 5 minutes left."
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 10)
+		layout.VerticalAlignment = Enum.VerticalAlignment.Center
+		layout.Parent = row
+
+		vcbStart5Btn = Instance.new("TextButton")
+		vcbStart5Btn.Name = "Start5"
+		vcbStart5Btn.Size = UDim2.new(0.5, -5, 1, 0)
+		vcbStart5Btn.BorderSizePixel = 0
+		vcbStart5Btn.AutoButtonColor = true
+		vcbStart5Btn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		vcbStart5Btn.BackgroundTransparency = 0.18
+		vcbStart5Btn.Font = Enum.Font.GothamBold
+		vcbStart5Btn.TextSize = 14
+		vcbStart5Btn.TextColor3 = Color3.fromRGB(245, 245, 245)
+		vcbStart5Btn.ZIndex = 9103
+		vcbStart5Btn.Text = "Got VCB 5:00"
+		vcbStart5Btn.Parent = row
+		makeCorner(vcbStart5Btn, 12)
+		makeStroke(vcbStart5Btn, 2, Color3.fromRGB(200, 40, 40), 0.15)
+
+		vcbStart6Btn = Instance.new("TextButton")
+		vcbStart6Btn.Name = "Start6"
+		vcbStart6Btn.Size = UDim2.new(0.5, -5, 1, 0)
+		vcbStart6Btn.BorderSizePixel = 0
+		vcbStart6Btn.AutoButtonColor = true
+		vcbStart6Btn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		vcbStart6Btn.BackgroundTransparency = 0.18
+		vcbStart6Btn.Font = Enum.Font.GothamBold
+		vcbStart6Btn.TextSize = 14
+		vcbStart6Btn.TextColor3 = Color3.fromRGB(245, 245, 245)
+		vcbStart6Btn.ZIndex = 9103
+		vcbStart6Btn.Text = "Got VCB 6:00"
+		vcbStart6Btn.Parent = row
+		makeCorner(vcbStart6Btn, 12)
+		makeStroke(vcbStart6Btn, 2, Color3.fromRGB(200, 40, 40), 0.15)
+
+		vcbStart5Btn.MouseButton1Click:Connect(function()
+			vcbStartTick()
+			vcbStartTimer(VCB_DURATION_5)
+			vcbDoLayout()
+		end)
+
+		vcbStart6Btn.MouseButton1Click:Connect(function()
+			vcbStartTick()
+			vcbStartTimer(VCB_DURATION_6)
+			vcbDoLayout()
 		end)
 
 		vcbCloseBtn.MouseButton1Click:Connect(function()
 			vcbPanel.Visible = false
 		end)
 
-		-- If this timer saves your run, you legally owe it one quiet thank you.
+		-- If this ends up off screen, it is not the UI's fault. It is your monitor doing parkour.
 	end
 
 	local function vcbEnsureToggle()
@@ -3008,9 +3168,9 @@ do
 
 		vcbToggleBtn = Instance.new("TextButton")
 		vcbToggleBtn.Name = "VCB_TimerToggle"
-		vcbToggleBtn.AnchorPoint = Vector2.new(1, 0)
-		vcbToggleBtn.Position = UDim2.new(1, -18, 0, 62)
-		vcbToggleBtn.Size = UDim2.new(0, 58, 0, 36)
+		vcbToggleBtn.AnchorPoint = Vector2.new(0, 0)
+		vcbToggleBtn.Position = UDim2.fromOffset(0, 0)
+		vcbToggleBtn.Size = UDim2.new(0, VCB_W, 0, VCB_H)
 		vcbToggleBtn.BorderSizePixel = 0
 		vcbToggleBtn.AutoButtonColor = true
 		vcbToggleBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
@@ -3029,10 +3189,61 @@ do
 			vcbEnsurePanel()
 			vcbPanel.Visible = not vcbPanel.Visible
 			if vcbPanel.Visible then
-				vcbStartLoop()
+				vcbStartTick()
+				vcbResetUI()
+				vcbDoLayout()
 			end
 		end)
 	end
 
+	local function vcbParseChatDuration(textLower)
+		if textLower:match("^%s*vcb%s*6%s*$") or textLower:match("^%s*vcb6%s*$") then
+			return VCB_DURATION_6
+		end
+		return VCB_DURATION_5
+	end
+
+	local function isVcbChatTrigger(text)
+		if type(text) ~= "string" then return false end
+		local s = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+		if s == VCB_WORD then return true end
+		if s == "vcb6" or s == "vcb 6" then return true end
+		if s:match("%f[%a]vcb%f[%A]") then return true end
+		return false
+	end
+
+	local function onLocalChat(text)
+		if not isVcbChatTrigger(text) then return end
+		local s = tostring(text):lower()
+		local dur = vcbParseChatDuration(s)
+
+		vcbEnsurePanel()
+		vcbStartTick()
+		vcbStartTimer(dur)
+		vcbDoLayout()
+	end
+
+	local function hookLocalChatTriggers()
+		if TextChatService and TextChatService.MessageReceived then
+			TextChatService.MessageReceived:Connect(function(msg)
+				if not msg then return end
+				local src = msg.TextSource
+				if not src or not src.UserId then return end
+				if src.UserId ~= LocalPlayer.UserId then return end
+				onLocalChat(msg.Text or "")
+			end)
+		end
+
+		pcall(function()
+			LocalPlayer.Chatted:Connect(function(message)
+				onLocalChat(message)
+			end)
+		end)
+	end
+
 	vcbEnsureToggle()
+	vcbEnsurePanel()
+	vcbStartLayout()
+	vcbDoLayout()
+	hookLocalChatTriggers()
 end
