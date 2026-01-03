@@ -2838,3 +2838,201 @@ local function init()
 end
 
 task.delay(INIT_DELAY, init)
+
+-- VCB 5 Minute Timer Addon
+-- Paste this at the very bottom of your script
+
+do
+	local VCB_DURATION = 5 * 60
+
+	local vcbToggleBtn
+	local vcbPanel
+	local vcbTimeLabel
+	local vcbHintLabel
+	local vcbStartBtn
+	local vcbCloseBtn
+
+	local vcbRunning = false
+	local vcbEndAt = 0
+	local vcbConn = nil
+
+	local function vcbFormatTime(sec)
+		sec = math.max(0, math.floor(sec + 0.5))
+		local m = math.floor(sec / 60)
+		local s = sec % 60
+		return string.format("%02d:%02d", m, s)
+	end
+
+	local function vcbStopLoop()
+		if vcbConn then
+			pcall(function() vcbConn:Disconnect() end)
+		end
+		vcbConn = nil
+	end
+
+	local function vcbStartLoop()
+		vcbStopLoop()
+		vcbConn = RunService.RenderStepped:Connect(function()
+			if not vcbPanel or not vcbPanel.Parent then
+				vcbStopLoop()
+				return
+			end
+
+			if not vcbPanel.Visible then
+				return
+			end
+
+			if vcbRunning then
+				local left = vcbEndAt - os.clock()
+				if left <= 0 then
+					vcbRunning = false
+					vcbTimeLabel.Text = "00:00"
+					vcbHintLabel.Text = "Time is up. If VCB still isnt here, Roblox said no."
+				else
+					vcbTimeLabel.Text = vcbFormatTime(left)
+				end
+			end
+		end)
+	end
+
+	local function vcbEnsurePanel()
+		ensureGui()
+		if vcbPanel and vcbPanel.Parent then return end
+
+		vcbPanel = Instance.new("Frame")
+		vcbPanel.Name = "VCB_TimerPanel"
+		vcbPanel.AnchorPoint = Vector2.new(1, 0)
+		vcbPanel.Position = UDim2.new(1, -18, 0, 104)
+		vcbPanel.Size = UDim2.new(0, 320, 0, 150)
+		vcbPanel.BorderSizePixel = 0
+		vcbPanel.Visible = false
+		vcbPanel.ZIndex = 9100
+		vcbPanel.Parent = gui
+
+		makeCorner(vcbPanel, 14)
+		makeGlass(vcbPanel)
+		makeStroke(vcbPanel, 2, Color3.fromRGB(200, 40, 40), 0.12)
+
+		local title = Instance.new("TextLabel")
+		title.Name = "Title"
+		title.BackgroundTransparency = 1
+		title.Position = UDim2.new(0, 12, 0, 10)
+		title.Size = UDim2.new(1, -60, 0, 20)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 16
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.TextColor3 = Color3.fromRGB(245, 245, 245)
+		title.ZIndex = 9101
+		title.Text = "VCB Timer"
+		title.Parent = vcbPanel
+
+		vcbCloseBtn = Instance.new("TextButton")
+		vcbCloseBtn.Name = "Close"
+		vcbCloseBtn.AnchorPoint = Vector2.new(1, 0)
+		vcbCloseBtn.Position = UDim2.new(1, -10, 0, 10)
+		vcbCloseBtn.Size = UDim2.new(0, 38, 0, 24)
+		vcbCloseBtn.BorderSizePixel = 0
+		vcbCloseBtn.AutoButtonColor = true
+		vcbCloseBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		vcbCloseBtn.BackgroundTransparency = 0.18
+		vcbCloseBtn.Font = Enum.Font.GothamBold
+		vcbCloseBtn.TextSize = 14
+		vcbCloseBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+		vcbCloseBtn.ZIndex = 9102
+		vcbCloseBtn.Text = "X"
+		vcbCloseBtn.Parent = vcbPanel
+		makeCorner(vcbCloseBtn, 10)
+		makeStroke(vcbCloseBtn, 1, Color3.fromRGB(200, 40, 40), 0.25)
+
+		vcbTimeLabel = Instance.new("TextLabel")
+		vcbTimeLabel.Name = "Time"
+		vcbTimeLabel.BackgroundTransparency = 1
+		vcbTimeLabel.Position = UDim2.new(0, 12, 0, 40)
+		vcbTimeLabel.Size = UDim2.new(1, -24, 0, 44)
+		vcbTimeLabel.Font = Enum.Font.GothamBlack
+		vcbTimeLabel.TextSize = 40
+		vcbTimeLabel.TextXAlignment = Enum.TextXAlignment.Left
+		vcbTimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		vcbTimeLabel.TextStrokeTransparency = 0.6
+		vcbTimeLabel.ZIndex = 9101
+		vcbTimeLabel.Text = "05:00"
+		vcbTimeLabel.Parent = vcbPanel
+
+		vcbHintLabel = Instance.new("TextLabel")
+		vcbHintLabel.Name = "Hint"
+		vcbHintLabel.BackgroundTransparency = 1
+		vcbHintLabel.Position = UDim2.new(0, 12, 0, 88)
+		vcbHintLabel.Size = UDim2.new(1, -24, 0, 18)
+		vcbHintLabel.Font = Enum.Font.Gotham
+		vcbHintLabel.TextSize = 13
+		vcbHintLabel.TextXAlignment = Enum.TextXAlignment.Left
+		vcbHintLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+		vcbHintLabel.ZIndex = 9101
+		vcbHintLabel.Text = "Press Got VCB when you get it, then it counts down 5 minutes."
+		vcbHintLabel.Parent = vcbPanel
+
+		vcbStartBtn = Instance.new("TextButton")
+		vcbStartBtn.Name = "Start"
+		vcbStartBtn.Position = UDim2.new(0, 12, 1, -44)
+		vcbStartBtn.Size = UDim2.new(1, -24, 0, 32)
+		vcbStartBtn.BorderSizePixel = 0
+		vcbStartBtn.AutoButtonColor = true
+		vcbStartBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		vcbStartBtn.BackgroundTransparency = 0.18
+		vcbStartBtn.Font = Enum.Font.GothamBold
+		vcbStartBtn.TextSize = 14
+		vcbStartBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+		vcbStartBtn.ZIndex = 9102
+		vcbStartBtn.Text = "Got VCB (Start 5:00)"
+		vcbStartBtn.Parent = vcbPanel
+		makeCorner(vcbStartBtn, 12)
+		makeStroke(vcbStartBtn, 2, Color3.fromRGB(200, 40, 40), 0.15)
+
+		vcbStartBtn.MouseButton1Click:Connect(function()
+			vcbRunning = true
+			vcbEndAt = os.clock() + VCB_DURATION
+			vcbTimeLabel.Text = "05:00"
+			vcbHintLabel.Text = "Counting down. You have 5 minutes left."
+		end)
+
+		vcbCloseBtn.MouseButton1Click:Connect(function()
+			vcbPanel.Visible = false
+		end)
+
+		-- If this timer saves your run, you legally owe it one quiet thank you.
+	end
+
+	local function vcbEnsureToggle()
+		ensureGui()
+		if vcbToggleBtn and vcbToggleBtn.Parent then return end
+
+		vcbToggleBtn = Instance.new("TextButton")
+		vcbToggleBtn.Name = "VCB_TimerToggle"
+		vcbToggleBtn.AnchorPoint = Vector2.new(1, 0)
+		vcbToggleBtn.Position = UDim2.new(1, -18, 0, 62)
+		vcbToggleBtn.Size = UDim2.new(0, 58, 0, 36)
+		vcbToggleBtn.BorderSizePixel = 0
+		vcbToggleBtn.AutoButtonColor = true
+		vcbToggleBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		vcbToggleBtn.BackgroundTransparency = 0.18
+		vcbToggleBtn.Font = Enum.Font.GothamBold
+		vcbToggleBtn.TextSize = 13
+		vcbToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		vcbToggleBtn.ZIndex = 9050
+		vcbToggleBtn.Text = "VCB"
+		vcbToggleBtn.Parent = gui
+
+		makeCorner(vcbToggleBtn, 12)
+		makeStroke(vcbToggleBtn, 2, Color3.fromRGB(200, 40, 40), 0.15)
+
+		vcbToggleBtn.MouseButton1Click:Connect(function()
+			vcbEnsurePanel()
+			vcbPanel.Visible = not vcbPanel.Visible
+			if vcbPanel.Visible then
+				vcbStartLoop()
+			end
+		end)
+	end
+
+	vcbEnsureToggle()
+end
