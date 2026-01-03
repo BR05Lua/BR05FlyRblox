@@ -3703,6 +3703,50 @@ end
 
 	pages["Info"].Page.Visible = true
 	setTabButtonActive(tabButtons["Info"], true)
+----------------------------------------------------------------
+-- MOBILE UI SCALE (menu half size, top bar quarter size)
+-- Paste this inside createUI() right before the "Menu toggle (arrow)" section
+----------------------------------------------------------------
+do
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	if isMobile and menuFrame and menuHandle then
+		local menuScale = 0.5
+		local barScale = 0.25
+
+		local baseMenuW = menuFrame.Size.X.Offset
+		local baseMenuH = menuFrame.Size.Y.Offset
+
+		local baseBarW = menuHandle.Size.X.Offset
+		local baseBarH = menuHandle.Size.Y.Offset
+
+		local newMenuW = math.max(240, math.floor(baseMenuW * menuScale + 0.5))
+		local newMenuH = math.max(170, math.floor(baseMenuH * menuScale + 0.5))
+
+		local newBarW = math.max(220, math.floor(baseBarW * menuScale + 0.5))
+		local newBarH = math.max(24,  math.floor(baseBarH * barScale + 0.5))
+
+		menuHandle.Size = UDim2.new(0, newBarW, 0, newBarH)
+
+		menuFrame.Size = UDim2.new(0, newMenuW, 0, newMenuH)
+		menuFrame.Position = UDim2.new(0.5, 0, 0, menuHandle.Position.Y.Offset + newBarH + 4)
+
+		if arrowButton then
+			local ab = math.max(24, math.floor(newBarH))
+			arrowButton.Size = UDim2.new(0, ab, 0, ab)
+			arrowButton.Position = UDim2.new(0, 6, 0, 0)
+			arrowButton.TextSize = math.max(14, math.floor(ab * 0.6))
+		end
+
+		for _, ch in ipairs(menuHandle:GetChildren()) do
+			if ch:IsA("TextLabel") then
+				ch.TextSize = math.max(12, math.floor(newBarH * 0.55))
+				ch.Position = UDim2.new(0, 40, 0, 0)
+				ch.Size = UDim2.new(1, -50, 1, 0)
+				break
+			end
+		end
+	end
+end
 
 	----------------------------------------------------------------
 	-- Menu toggle (arrow), starts CLOSED and reliable
