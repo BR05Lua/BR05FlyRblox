@@ -37,7 +37,6 @@ local DEFAULT_FLY_ID   = "rbxassetid://131217573719045"
 local FLOAT_ID = DEFAULT_FLOAT_ID
 local FLY_ID   = DEFAULT_FLY_ID
 
-local menuToggleKey = Enum.KeyCode.H
 local flightToggleKey = Enum.KeyCode.F
 
 local flySpeed = 150
@@ -2102,7 +2101,7 @@ local function createUI()
 		header.Size = UDim2.new(1, 0, 0, 22)
 
 		local info = makeText(controlsScroll,
-			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Menu Toggle: " .. menuToggleKey.Name .. "\n- Move: WASD + Q/E\n\nMobile:\n- Use the Fly button (bottom-right)\n- Use the top arrow to open/close the menu",
+			"PC:\n- Fly Toggle: " .. flightToggleKey.Name .. "\n- Move: WASD + Q/E\n\nMobile:\n- Use the Fly button (bottom-right)\n- Use the top arrow to open/close the menu",
 			14, false
 		)
 		info.Size = UDim2.new(1, 0, 0, 130)
@@ -2148,7 +2147,6 @@ local function createUI()
 		end
 
 		makeBindLine("Flight Toggle Key:", function() return flightToggleKey end, function(k) flightToggleKey = k end)
-		makeBindLine("Menu Toggle Key:", function() return menuToggleKey end, function(k) menuToggleKey = k end)
 	end
 
 	----------------------------------------------------------------
