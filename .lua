@@ -2328,98 +2328,82 @@ end
 	end
 
 ----------------------------------------------------------------
--- ANIM PACKS TAB
+-- ANIM PACKS TAB (with Reset to Avatar Animations)
 ----------------------------------------------------------------
 do
-	-- Cache the character's original Animate IDs once, so we can truly reset later
-	local function getOrigCache()
-		if typeof(_G) ~= "table" then return nil end
-		_G.__SOS_OrigAnimateIds = _G.__SOS_OrigAnimateIds or {}
-		return _G.__SOS_OrigAnimateIds
-	end
-
-	local function captureOriginalAnimateIds()
-		local cache = getOrigCache()
-		if not cache then return false end
-		if cache.__captured then return true end
-
+	-- Reset Animate script back to the animations currently equipped on your Roblox avatar
+	local function resetToAvatarAnimations()
 		local animate = getAnimateScript()
-		if not animate then return false end
-
-		local function safeGetAnimId(obj)
-			if obj and obj:IsA("Animation") then
-				return obj.AnimationId
-			end
-			return nil
+		if not animate or not humanoid then
+			return false, "Animate script not found."
 		end
 
-		cache.Idle1 = safeGetAnimId(animate:FindFirstChild("idle") and animate.idle:FindFirstChild("Animation1"))
-		cache.Idle2 = safeGetAnimId(animate:FindFirstChild("idle") and animate.idle:FindFirstChild("Animation2"))
-		cache.Walk  = safeGetAnimId(animate:FindFirstChild("walk") and animate.walk:FindFirstChild("WalkAnim"))
-		cache.Run   = safeGetAnimId(animate:FindFirstChild("run") and animate.run:FindFirstChild("RunAnim"))
-		cache.Jump  = safeGetAnimId(animate:FindFirstChild("jump") and animate.jump:FindFirstChild("JumpAnim"))
-		cache.Climb = safeGetAnimId(animate:FindFirstChild("climb") and animate.climb:FindFirstChild("ClimbAnim"))
-		cache.Fall  = safeGetAnimId(animate:FindFirstChild("fall") and animate.fall:FindFirstChild("FallAnim"))
+		local okDesc, desc = pcall(function()
+			return Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId)
+		end)
+		if not okDesc or not desc then
+			return false, "Could not fetch avatar animations."
+		end
 
-		cache.Swim     = safeGetAnimId(animate:FindFirstChild("swim") and animate.swim:FindFirstChild("Swim"))
-		cache.SwimIdle = safeGetAnimId(animate:FindFirstChild("swim") and animate.swim:FindFirstChild("SwimIdle"))
-		cache.SwimDirect = safeGetAnimId(animate:FindFirstChild("swim"))
+		local function toAsset(v)
+			local n = tonumber(v)
+			if not n or n <= 0 then return nil end
+			return "rbxassetid://" .. tostring(n)
+		end
 
-		cache.__captured = true
-		return true
-	end
-
-	local function restoreOriginalAnimateIds()
-		local cache = getOrigCache()
-		if not cache or not cache.__captured then return false end
-
-		local animate = getAnimateScript()
-		if not animate then return false end
-		if not humanoid then return false end
-
-		animate.Disabled = true
-		stopAllPlayingTracks(humanoid)
-
-		local function setIf(folderName, childName, value)
-			if not value then return end
+		local function setAnimValue(folderName, childName, assetIdStr)
+			if not assetIdStr then return end
 			local f = animate:FindFirstChild(folderName)
 			if not f then return end
 			local a = f:FindFirstChild(childName)
 			if a and a:IsA("Animation") then
-				a.AnimationId = value
+				a.AnimationId = assetIdStr
 			end
 		end
 
-		local function setDirect(childName, value)
-			if not value then return end
+		local function setDirect(childName, assetIdStr)
+			if not assetIdStr then return end
 			local a = animate:FindFirstChild(childName)
 			if a and a:IsA("Animation") then
-				a.AnimationId = value
+				a.AnimationId = assetIdStr
 			end
 		end
 
-		setIf("idle", "Animation1", cache.Idle1)
-		setIf("idle", "Animation2", cache.Idle2)
-		setIf("walk", "WalkAnim", cache.Walk)
-		setIf("run", "RunAnim", cache.Run)
-		setIf("jump", "JumpAnim", cache.Jump)
-		setIf("climb", "ClimbAnim", cache.Climb)
-		setIf("fall", "FallAnim", cache.Fall)
+		local idle  = toAsset(desc.IdleAnimation)
+		local walk  = toAsset(desc.WalkAnimation)
+		local run   = toAsset(desc.RunAnimation)
+		local jump  = toAsset(desc.JumpAnimation)
+		local climb = toAsset(desc.ClimbAnimation)
+		local fall  = toAsset(desc.FallAnimation)
+		local swim  = toAsset(desc.SwimAnimation)
 
-		setIf("swim", "Swim", cache.Swim)
-		setIf("swim", "SwimIdle", cache.SwimIdle)
-		setDirect("swim", cache.SwimDirect)
+		animate.Disabled = true
+		stopAllPlayingTracks(humanoid)
+
+		setAnimValue("idle", "Animation1", idle)
+		setAnimValue("idle", "Animation2", idle)
+		setAnimValue("walk", "WalkAnim", walk)
+		setAnimValue("run", "RunAnim", run)
+		setAnimValue("jump", "JumpAnim", jump)
+		setAnimValue("climb", "ClimbAnim", climb)
+		setAnimValue("fall", "FallAnim", fall)
+
+		setAnimValue("swim", "Swim", swim)
+		setAnimValue("swim", "SwimIdle", swim)
+		setDirect("swim", swim)
 
 		animate.Disabled = false
 		pcall(function()
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		end)
 
+		for k, _ in pairs(stateOverrides) do
+			stateOverrides[k] = nil
+		end
+
+		scheduleSave()
 		return true
 	end
-
-	-- Capture originals early if possible
-	captureOriginalAnimateIds()
 
 	local header = makeText(animScroll, "Anim Packs", 16, true)
 	header.Size = UDim2.new(1, 0, 0, 22)
@@ -2437,31 +2421,19 @@ do
 		lay.Padding = UDim.new(0, 10)
 		lay.Parent = row
 
-		local resetBtn = makeButton(row, "Reset Anims")
-		resetBtn.Size = UDim2.new(0, 160, 0, 36)
+		local resetBtn = makeButton(row, "Reset to Avatar")
+		resetBtn.Size = UDim2.new(0, 170, 0, 36)
 
-		local hint = makeText(row, "Restores your original character Animate IDs.", 13, false)
-		hint.Size = UDim2.new(1, -180, 1, 0)
+		local hint = makeText(row, "Applies the animations your avatar is currently wearing.", 13, false)
+		hint.Size = UDim2.new(1, -190, 1, 0)
 		hint.TextColor3 = Color3.fromRGB(210, 210, 210)
 
 		resetBtn.MouseButton1Click:Connect(function()
-			-- Make sure originals are captured (in case character loaded late)
-			if not captureOriginalAnimateIds() then
-				notify("Anim Packs", "Could not find Animate script to reset.", 3)
-				return
-			end
-
-			-- Clear saved overrides
-			for k, _ in pairs(stateOverrides) do
-				stateOverrides[k] = nil
-			end
-
-			local ok = restoreOriginalAnimateIds()
+			local ok, err = resetToAvatarAnimations()
 			if ok then
-				notify("Anim Packs", "Reset to original animations.", 2)
-				scheduleSave()
+				notify("Anim Packs", "Reset to your avatar animations.", 2)
 			else
-				notify("Anim Packs", "Reset failed. (Animate script missing?)", 3)
+				notify("Anim Packs", err or "Reset failed.", 3)
 			end
 		end)
 	end
