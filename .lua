@@ -794,7 +794,7 @@ local CustomIdle = {
 	["Johnny"] = 77834689346843,
 	["Made in Heaven"] = 79234770032233,
 	["Mahito"] = 92585001378279,
-	["Honored One"] = 139000839803032,
+	["Gojo"] = 139000839803032,
 	["Gon Rage"] = 136678571910037,
 	["Sol's RNG 1"] = 125722696765151,
 	["Luffy"] = 107520488394848,
@@ -843,7 +843,7 @@ local CustomRun = {
 	["Captain JS"] = 87806542116815,
 	["Ninja Sprint"] = 123763532572423,
 	["IDEK"] = 101293881003047,
-	["Honored One"] = 82260970223217,
+	["GOJO"] = 82260970223217,
 	["Head Hold"] = 92715775326925,
 
 	["Springtrap Sturdy"] = 80927378599036,
@@ -2328,142 +2328,175 @@ end
 	end
 
 	----------------------------------------------------------------
-	-- ANIM PACKS TAB
-	----------------------------------------------------------------
+-- ANIM PACKS TAB (with Reset Anim Overrides at the top)
+----------------------------------------------------------------
+do
+	local header = makeText(animScroll, "Anim Packs", 16, true)
+	header.Size = UDim2.new(1, 0, 0, 22)
+
+	-- Reset row (NEW)
 	do
-		local header = makeText(animScroll, "Anim Packs", 16, true)
-		header.Size = UDim2.new(1, 0, 0, 22)
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.Size = UDim2.new(1, 0, 0, 44)
+		row.Parent = animScroll
 
-		local help = makeText(animScroll, "Pick a STATE, then pick a pack name to change only that state.", 13, false)
-		help.Size = UDim2.new(1, 0, 0, 34)
-		help.TextColor3 = Color3.fromRGB(210, 210, 210)
+		local lay = Instance.new("UIListLayout")
+		lay.FillDirection = Enum.FillDirection.Horizontal
+		lay.SortOrder = Enum.SortOrder.LayoutOrder
+		lay.VerticalAlignment = Enum.VerticalAlignment.Center
+		lay.Padding = UDim.new(0, 10)
+		lay.Parent = row
 
-		local animStateBar = Instance.new("ScrollingFrame")
-		animStateBar.BackgroundTransparency = 1
-		animStateBar.BorderSizePixel = 0
-		animStateBar.Size = UDim2.new(1, 0, 0, 44)
-		animStateBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animStateBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		animStateBar.ScrollingDirection = Enum.ScrollingDirection.X
-		animStateBar.ScrollBarThickness = 2
-		animStateBar.Parent = animScroll
+		local resetBtn = makeButton(row, "Reset Anim Overrides")
+		resetBtn.Size = UDim2.new(0, 220, 0, 36)
 
-		local stLayout = Instance.new("UIListLayout")
-		stLayout.FillDirection = Enum.FillDirection.Horizontal
-		stLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		stLayout.Padding = UDim.new(0, 12)
-		stLayout.Parent = animStateBar
+		local hint = makeText(row, "Clears your overrides and restores the game defaults.", 13, false)
+		hint.Size = UDim2.new(1, -240, 0, 36)
+		hint.TextColor3 = Color3.fromRGB(210, 210, 210)
 
-		local animCategoryBar = Instance.new("ScrollingFrame")
-		animCategoryBar.BackgroundTransparency = 1
-		animCategoryBar.BorderSizePixel = 0
-		animCategoryBar.Size = UDim2.new(1, 0, 0, 44)
-		animCategoryBar.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animCategoryBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-		animCategoryBar.ScrollingDirection = Enum.ScrollingDirection.X
-		animCategoryBar.ScrollBarThickness = 2
-		animCategoryBar.Parent = animScroll
-
-		local catLayout = Instance.new("UIListLayout")
-		catLayout.FillDirection = Enum.FillDirection.Horizontal
-		catLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		catLayout.Padding = UDim.new(0, 12)
-		catLayout.Parent = animCategoryBar
-
-		local animListScroll = Instance.new("ScrollingFrame")
-		animListScroll.BackgroundTransparency = 1
-		animListScroll.BorderSizePixel = 0
-		animListScroll.Size = UDim2.new(1, 0, 0, 250)
-		animListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-		animListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-		animListScroll.ScrollBarThickness = 4
-		animListScroll.Parent = animScroll
-
-		local pad = Instance.new("UIPadding")
-		pad.PaddingTop = UDim.new(0, 6)
-		pad.PaddingBottom = UDim.new(0, 6)
-		pad.PaddingLeft = UDim.new(0, 2)
-		pad.PaddingRight = UDim.new(0, 2)
-		pad.Parent = animListScroll
-
-		local animListContainer = Instance.new("Frame")
-		animListContainer.BackgroundTransparency = 1
-		animListContainer.Size = UDim2.new(1, 0, 0, 0)
-		animListContainer.Parent = animListScroll
-
-		local listLayout = Instance.new("UIListLayout")
-		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		listLayout.Padding = UDim.new(0, 10)
-		listLayout.Parent = animListContainer
-
-		local function animateListPop()
-			animListContainer.Position = UDim2.new(0, 26, 0, 0)
-			tween(animListContainer, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Position = UDim2.new(0, 0, 0, 0)
-			})
-		end
-
-		local stateButtons = {}
-		local categoryButtons = {}
-
-		local function rebuildPackList()
-			for _, ch in ipairs(animListContainer:GetChildren()) do
-				if ch:IsA("TextButton") or ch:IsA("TextLabel") or ch:IsA("Frame") then
-					ch:Destroy()
-				end
+		resetBtn.MouseButton1Click:Connect(function()
+			for k, _ in pairs(stateOverrides) do
+				stateOverrides[k] = nil
 			end
 
-			if lastChosenCategory == "Custom" then
-				if lastChosenState == "Walk" then
-					local t = makeText(animListContainer, "Custom is not available for Walk.", 14, true)
-					t.Size = UDim2.new(1, 0, 0, 28)
-					animateListPop()
-					return
-				end
+			local animate = getAnimateScript()
+			if animate then
+				pcall(function() animate.Disabled = true end)
+				stopAllPlayingTracks(humanoid)
 
-				local names = listCustomNamesForState(lastChosenState)
-				if #names == 0 then
-					local t = makeText(animListContainer, "No Custom animations for: " .. lastChosenState, 14, true)
-					t.Size = UDim2.new(1, 0, 0, 28)
-					animateListPop()
-					return
-				end
+				pcall(function()
+					animate:Destroy()
+				end)
 
-				for _, nm in ipairs(names) do
-					local b = makeButton(animListContainer, nm)
-					b.Size = UDim2.new(1, 0, 0, 36)
-					b.MouseButton1Click:Connect(function()
-						local id = getCustomIdForState(nm, lastChosenState)
-						if not id then return end
-						stateOverrides[lastChosenState] = "rbxassetid://" .. tostring(id)
-						local ok = applyStateOverrideToAnimate(lastChosenState, stateOverrides[lastChosenState])
-						if ok then
-							notify("Anim Packs", "Set " .. lastChosenState .. " to " .. nm, 2)
-							scheduleSave()
-						else
-							notify("Anim Packs", "Failed to apply. (Animate script missing?)", 3)
+				task.defer(function()
+					if character then
+						local ok, res = pcall(function()
+							return Players:GetCharacterAppearanceAsync(LocalPlayer.UserId)
+						end)
+
+						if ok and res then
+							local newAnim = res:FindFirstChild("Animate")
+							if newAnim then
+								newAnim.Parent = character
+							end
 						end
-					end)
-				end
+					end
+				end)
+			end
 
+			lastChosenState = "Idle"
+			lastChosenCategory = "Roblox Anims"
+			scheduleSave()
+			notify("Anim Packs", "Overrides cleared. Defaults restored (best-effort).", 3)
+		end)
+	end
+
+	local help = makeText(animScroll, "Pick a STATE, then pick a pack name to change only that state.", 13, false)
+	help.Size = UDim2.new(1, 0, 0, 34)
+	help.TextColor3 = Color3.fromRGB(210, 210, 210)
+
+	local animStateBar = Instance.new("ScrollingFrame")
+	animStateBar.BackgroundTransparency = 1
+	animStateBar.BorderSizePixel = 0
+	animStateBar.Size = UDim2.new(1, 0, 0, 44)
+	animStateBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+	animStateBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+	animStateBar.ScrollingDirection = Enum.ScrollingDirection.X
+	animStateBar.ScrollBarThickness = 2
+	animStateBar.Parent = animScroll
+
+	local stLayout = Instance.new("UIListLayout")
+	stLayout.FillDirection = Enum.FillDirection.Horizontal
+	stLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	stLayout.Padding = UDim.new(0, 12)
+	stLayout.Parent = animStateBar
+
+	local animCategoryBar = Instance.new("ScrollingFrame")
+	animCategoryBar.BackgroundTransparency = 1
+	animCategoryBar.BorderSizePixel = 0
+	animCategoryBar.Size = UDim2.new(1, 0, 0, 44)
+	animCategoryBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+	animCategoryBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+	animCategoryBar.ScrollingDirection = Enum.ScrollingDirection.X
+	animCategoryBar.ScrollBarThickness = 2
+	animCategoryBar.Parent = animScroll
+
+	local catLayout = Instance.new("UIListLayout")
+	catLayout.FillDirection = Enum.FillDirection.Horizontal
+	catLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	catLayout.Padding = UDim.new(0, 12)
+	catLayout.Parent = animCategoryBar
+
+	local animListScroll = Instance.new("ScrollingFrame")
+	animListScroll.BackgroundTransparency = 1
+	animListScroll.BorderSizePixel = 0
+	animListScroll.Size = UDim2.new(1, 0, 0, 250)
+	animListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	animListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	animListScroll.ScrollBarThickness = 4
+	animListScroll.Parent = animScroll
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 6)
+	pad.PaddingBottom = UDim.new(0, 6)
+	pad.PaddingLeft = UDim.new(0, 2)
+	pad.PaddingRight = UDim.new(0, 2)
+	pad.Parent = animListScroll
+
+	local animListContainer = Instance.new("Frame")
+	animListContainer.BackgroundTransparency = 1
+	animListContainer.Size = UDim2.new(1, 0, 0, 0)
+	animListContainer.Parent = animListScroll
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 10)
+	listLayout.Parent = animListContainer
+
+	local function animateListPop()
+		animListContainer.Position = UDim2.new(0, 26, 0, 0)
+		tween(animListContainer, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 0)
+		})
+	end
+
+	local stateButtons = {}
+	local categoryButtons = {}
+
+	local function rebuildPackList()
+		for _, ch in ipairs(animListContainer:GetChildren()) do
+			if ch:IsA("TextButton") or ch:IsA("TextLabel") or ch:IsA("Frame") then
+				ch:Destroy()
+			end
+		end
+
+		if lastChosenCategory == "Custom" then
+			if lastChosenState == "Walk" then
+				local t = makeText(animListContainer, "Custom is not available for Walk.", 14, true)
+				t.Size = UDim2.new(1, 0, 0, 28)
 				animateListPop()
 				return
 			end
 
-			local names = listPackNamesForCategory(lastChosenCategory)
-			for _, packName in ipairs(names) do
-				local b = makeButton(animListContainer, packName)
+			local names = listCustomNamesForState(lastChosenState)
+			if #names == 0 then
+				local t = makeText(animListContainer, "No Custom animations for: " .. lastChosenState, 14, true)
+				t.Size = UDim2.new(1, 0, 0, 28)
+				animateListPop()
+				return
+			end
+
+			for _, nm in ipairs(names) do
+				local b = makeButton(animListContainer, nm)
 				b.Size = UDim2.new(1, 0, 0, 36)
 				b.MouseButton1Click:Connect(function()
-					local id = getPackValueForState(packName, lastChosenState)
-					if not id then
-						notify("Anim Packs", "That pack has no ID for: " .. lastChosenState, 2)
-						return
-					end
+					local id = getCustomIdForState(nm, lastChosenState)
+					if not id then return end
 					stateOverrides[lastChosenState] = "rbxassetid://" .. tostring(id)
 					local ok = applyStateOverrideToAnimate(lastChosenState, stateOverrides[lastChosenState])
 					if ok then
-						notify("Anim Packs", "Set " .. lastChosenState .. " to " .. packName, 2)
+						notify("Anim Packs", "Set " .. lastChosenState .. " to " .. nm, 2)
 						scheduleSave()
 					else
 						notify("Anim Packs", "Failed to apply. (Animate script missing?)", 3)
@@ -2472,60 +2505,86 @@ end
 			end
 
 			animateListPop()
+			return
 		end
 
-		local function setCategory(catName)
-			if lastChosenState == "Walk" and catName == "Custom" then
-				catName = "Roblox Anims"
-			end
-			lastChosenCategory = catName
-			for n, btn in pairs(categoryButtons) do
-				setTabButtonActive(btn, n == catName)
-			end
-			rebuildPackList()
-			scheduleSave()
-		end
-
-		local function setState(stateName)
-			lastChosenState = stateName
-			for n, btn in pairs(stateButtons) do
-				setTabButtonActive(btn, n == stateName)
-			end
-
-			if lastChosenState == "Walk" and lastChosenCategory == "Custom" then
-				lastChosenCategory = "Roblox Anims"
-				for n, btn in pairs(categoryButtons) do
-					setTabButtonActive(btn, n == lastChosenCategory)
+		local names = listPackNamesForCategory(lastChosenCategory)
+		for _, packName in ipairs(names) do
+			local b = makeButton(animListContainer, packName)
+			b.Size = UDim2.new(1, 0, 0, 36)
+			b.MouseButton1Click:Connect(function()
+				local id = getPackValueForState(packName, lastChosenState)
+				if not id then
+					notify("Anim Packs", "That pack has no ID for: " .. lastChosenState, 2)
+					return
 				end
-			end
-
-			rebuildPackList()
-			scheduleSave()
-		end
-
-		local states = { "Idle", "Walk", "Run", "Jump", "Climb", "Fall", "Swim" }
-		for _, sName in ipairs(states) do
-			local b = makeButton(animStateBar, sName)
-			b.Size = UDim2.new(0, 110, 0, 36)
-			stateButtons[sName] = b
-			b.MouseButton1Click:Connect(function()
-				setState(sName)
+				stateOverrides[lastChosenState] = "rbxassetid://" .. tostring(id)
+				local ok = applyStateOverrideToAnimate(lastChosenState, stateOverrides[lastChosenState])
+				if ok then
+					notify("Anim Packs", "Set " .. lastChosenState .. " to " .. packName, 2)
+					scheduleSave()
+				else
+					notify("Anim Packs", "Failed to apply. (Animate script missing?)", 3)
+				end
 			end)
 		end
 
-		local cats = { "Roblox Anims", "Unreleased", "Custom" }
-		for _, cName in ipairs(cats) do
-			local b = makeButton(animCategoryBar, cName)
-			b.Size = UDim2.new(0, (cName == "Roblox Anims" and 160 or 130), 0, 36)
-			categoryButtons[cName] = b
-			b.MouseButton1Click:Connect(function()
-				setCategory(cName)
-			end)
-		end
-
-		setCategory(lastChosenCategory)
-		setState(lastChosenState)
+		animateListPop()
 	end
+
+	local function setCategory(catName)
+		if lastChosenState == "Walk" and catName == "Custom" then
+			catName = "Roblox Anims"
+		end
+		lastChosenCategory = catName
+		for n, btn in pairs(categoryButtons) do
+			setTabButtonActive(btn, n == catName)
+		end
+		rebuildPackList()
+		scheduleSave()
+	end
+
+	local function setState(stateName)
+		lastChosenState = stateName
+		for n, btn in pairs(stateButtons) do
+			setTabButtonActive(btn, n == stateName)
+		end
+
+		if lastChosenState == "Walk" and lastChosenCategory == "Custom" then
+			lastChosenCategory = "Roblox Anims"
+			for n, btn in pairs(categoryButtons) do
+				setTabButtonActive(btn, n == lastChosenCategory)
+			end
+		end
+
+		rebuildPackList()
+		scheduleSave()
+	end
+
+	local states = { "Idle", "Walk", "Run", "Jump", "Climb", "Fall", "Swim" }
+	for _, sName in ipairs(states) do
+		local b = makeButton(animStateBar, sName)
+		b.Size = UDim2.new(0, 110, 0, 36)
+		stateButtons[sName] = b
+		b.MouseButton1Click:Connect(function()
+			setState(sName)
+		end)
+	end
+
+	local cats = { "Roblox Anims", "Unreleased", "Custom" }
+	for _, cName in ipairs(cats) do
+		local b = makeButton(animCategoryBar, cName)
+		b.Size = UDim2.new(0, (cName == "Roblox Anims" and 160 or 130), 0, 36)
+		categoryButtons[cName] = b
+		b.MouseButton1Click:Connect(function()
+			setCategory(cName)
+		end)
+	end
+
+	setCategory(lastChosenCategory)
+	setState(lastChosenState)
+end
+
 
 ----------------------------------------------------------------
 -- PLAYER TAB (full block, UPDATED: BHOP menu moved, draggable title bar, menu toggle, blocks flight while BHOP enabled)
