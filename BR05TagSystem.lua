@@ -160,6 +160,8 @@ local CustomTags = {
 	[4689208231] = { TagText = "Shiroyasha" },
 	[2440542440] = { TagText = "Maze" },
 	[4225432791] = { TagText = "Sir Pooki The Brit" },
+	[1575141882] = { TagText = "Owner Sin of Heart" },
+	[5105522471] = { TagText = "Co-Owner Sin of Heart" },
 }
 
 --------------------------------------------------------------------
