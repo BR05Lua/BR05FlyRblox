@@ -91,11 +91,7 @@ local CustomUserIntros = {
 		SoundId = "rbxassetid://7018424260",
 		TextColor = Color3.fromRGB(200, 0, 0),
 	},
-	[105995794] = {
-		Text = "! Asralian Wendigo is Here !",
-		SoundId = "rbxassetid://76959581837478",
-		TextColor = Color3.fromRGB(200, 0, 0),
-	},
+
 }
 
 --------------------------------------------------------------------
@@ -132,7 +128,7 @@ local TesterUserIds = {
 }
 
 local SinProfiles = {
-	[105995794]  = { SinName = "Lettuce" },
+	[105995794]  = { SinName = "Lettuce", ArrivalText = "! Australian Wendigo is Here !", ArrivalSoundId = "rbxassetid://76959581837478" },
 	[138975737]  = { SinName = "Music" },
 	[9159968275] = { SinName = "Music" },
 	[4659279349] = { SinName = "Trial" },
