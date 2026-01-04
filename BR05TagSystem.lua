@@ -54,10 +54,6 @@ local ORB_OFFSET_Y = 6.2
 local REFRESH_EVENT_NAME = "event_modify_refresh"
 local REFRESH_HOTKEY = Enum.KeyCode.RightControl
 
--- Special one off tag
-local AUS_FLAG_USERID = 105995794
-local AUS_FLAG_IMAGE = "rbxassetid://113817397"
-
 --------------------------------------------------------------------
 -- ARRIVAL FX + POPUPS
 --------------------------------------------------------------------
@@ -285,13 +281,6 @@ local AMBER = Color3.fromRGB(255, 190, 70)
 local BLACK = Color3.fromRGB(0, 0, 0)
 
 local TagEffectProfiles = {
-
-	-- Australia flag tag for Lettuce (105995794)
-	[AUS_FLAG_USERID] = {
-		EffectsOverride = true,
-		Effects = { "AusFlagWave" },
-	},
-
 	
 	-- Ghoul (754232813)
 	[754232813] = {
@@ -1774,45 +1763,6 @@ local function addSinWavyLook(parentBtn)
 	end)
 end
 
-local function addAusFlagWaveBackdrop(parentBtn)
-	if not parentBtn then return nil, nil end
-
-	local img = parentBtn:FindFirstChild("AusFlag")
-	if not img then
-		parentBtn.ClipsDescendants = true
-
-		img = Instance.new("ImageLabel")
-		img.Name = "AusFlag"
-		img.BackgroundTransparency = 1
-		img.Image = AUS_FLAG_IMAGE
-		img.ScaleType = Enum.ScaleType.Stretch
-		img.ZIndex = 0
-
-		-- Oversize slightly so shifting it does not show empty edges
-		img.Size = UDim2.new(1, 18, 1, 12)
-		img.Position = UDim2.new(0, -9, 0, -6)
-
-		img.Parent = parentBtn
-
-		local shade = Instance.new("UIGradient")
-		shade.Name = "FlagShade"
-		shade.Rotation = 0
-		shade.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-		})
-		shade.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.30),
-			NumberSequenceKeypoint.new(0.5, 0.05),
-			NumberSequenceKeypoint.new(1, 0.30),
-		})
-		shade.Parent = img
-	end
-
-	local grad = img:FindFirstChild("FlagShade")
-	return img, grad
-end
-
 --------------------------------------------------------------------
 -- TAG FX SYSTEM
 --------------------------------------------------------------------
@@ -1919,12 +1869,7 @@ local function resolveTagProfile(plr, role, roleColor)
 		if userProf.ScrollGradient ~= nil then out.ScrollGradient = userProf.ScrollGradient end
 		if userProf.TopTextColor then out.TopTextColor = userProf.TopTextColor end
 		if userProf.BottomTextColor then out.BottomTextColor = userProf.BottomTextColor end
-		out.Effects = mergeEffects(outif userProf.EffectsOverride == true then
-	out.Effects = userProf.Effects or {}
-else
-	out.Effects = mergeEffects(out.Effects, userProf.Effects)
-end
-.Effects, userProf.Effects)
+		out.Effects = mergeEffects(out.Effects, userProf.Effects)
 	end
 
 	if not out.Gradient1 then out.Gradient1 = Color3.fromRGB(24, 24, 30) end
