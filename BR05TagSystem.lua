@@ -3493,3 +3493,645 @@ do
 	end)
 end
 
+--------------------------------------------------------------------
+-- SOS PULL PUSH PATCH (PASTE THIS AT THE VERY END OF YOUR SCRIPT)
+-- Owner and CoOwner can pull or push all tagged users via chat triggers.
+-- Uses chat commands so everyone with this script reacts on their own client.
+-- British note: if this flings you into orbit, pretend it was "intended movement tech".
+--------------------------------------------------------------------
+do
+	----------------------------------------------------------------
+	-- CHAT COMMANDS
+	-- (Owner or CoOwner only, everyone else ignores)
+	-- SOS_PP_PULL:OWNER:25
+	-- SOS_PP_PULL:COOWNER:25
+	-- SOS_PP_PULL:USERID:433636433:25
+	-- SOS_PP_STOP
+	-- SOS_PP_PUSHBURST:OWNER:80
+	-- SOS_PP_PUSHBURST:COOWNER:80
+	-- SOS_PP_PUSHBURST:USERID:433636433:80
+	-- SOS_PP_PUSHHOLD:OWNER:80
+	-- SOS_PP_PUSHHOLD:COOWNER:80
+	-- SOS_PP_PUSHHOLD:USERID:433636433:80
+	-- SOS_PP_PUSHSTOP
+	----------------------------------------------------------------
+
+	local PP_CMD_PULL_PREFIX = "SOS_PP_PULL:"
+	local PP_CMD_STOP = "SOS_PP_STOP"
+	local PP_CMD_PUSHBURST_PREFIX = "SOS_PP_PUSHBURST:"
+	local PP_CMD_PUSHHOLD_PREFIX = "SOS_PP_PUSHHOLD:"
+	local PP_CMD_PUSHSTOP = "SOS_PP_PUSHSTOP"
+
+	local PP_TARGET_OWNER = "OWNER"
+	local PP_TARGET_COOWNER = "COOWNER"
+	local PP_TARGET_USERID = "USERID"
+
+	local function clampInt(n, a, b, fallback)
+		n = tonumber(n)
+		if not n then return fallback end
+		n = math.floor(n + 0.5)
+		if n < a then n = a end
+		if n > b then n = b end
+		return n
+	end
+
+	local function splitByColon(s)
+		local out = {}
+		for token in string.gmatch(s, "([^:]+)") do
+			out[#out + 1] = token
+		end
+		return out
+	end
+
+	local function firstOwner()
+		for _, p in ipairs(Players:GetPlayers()) do
+			if isOwner(p) then return p end
+		end
+		return nil
+	end
+
+	local function firstCoOwner()
+		for _, p in ipairs(Players:GetPlayers()) do
+			if isCoOwner(p) then return p end
+		end
+		return nil
+	end
+
+	local function resolveTargetPlayer(targetType, maybeUserId)
+		if targetType == PP_TARGET_OWNER then
+			return firstOwner()
+		end
+		if targetType == PP_TARGET_COOWNER then
+			return firstCoOwner()
+		end
+		if targetType == PP_TARGET_USERID then
+			local uid = tonumber(maybeUserId)
+			if uid then
+				return Players:GetPlayerByUserId(uid)
+			end
+		end
+		return nil
+	end
+
+	local function localIsTaggedUser()
+		local role = getSosRole(LocalPlayer)
+		return role ~= nil
+	end
+
+	local function localCanBeMovedByPP()
+		if not localIsTaggedUser() then return false end
+		if isOwner(LocalPlayer) then return false end
+		if isCoOwner(LocalPlayer) then return false end
+		return true
+	end
+
+	----------------------------------------------------------------
+	-- PULL PUSH FORCE CORE (LOCAL ONLY)
+	----------------------------------------------------------------
+	local ppState = {
+		mode = "None", -- None, Pull, PushHold
+		targetUserId = 0,
+		pullSpeed = 20, -- 1-50
+		pushPower = 60, -- 1-100
+		conn = nil,
+		force = nil,
+		att = nil,
+		lastBurstAt = 0,
+	}
+
+	local function clearForceObjects()
+		if ppState.conn then
+			pcall(function() ppState.conn:Disconnect() end)
+		end
+		ppState.conn = nil
+
+		if ppState.force and ppState.force.Parent then
+			pcall(function() ppState.force:Destroy() end)
+		end
+		ppState.force = nil
+
+		if ppState.att and ppState.att.Parent then
+			pcall(function() ppState.att:Destroy() end)
+		end
+		ppState.att = nil
+	end
+
+	local function ensureForceObjects(hrp)
+		if not hrp then return nil end
+
+		if not ppState.att or not ppState.att.Parent then
+			local att = Instance.new("Attachment")
+			att.Name = "SOS_PP_Attachment"
+			att.Parent = hrp
+			ppState.att = att
+		end
+
+		if not ppState.force or not ppState.force.Parent then
+			local vf = Instance.new("VectorForce")
+			vf.Name = "SOS_PP_VectorForce"
+			vf.ApplyAtCenterOfMass = true
+			vf.RelativeTo = Enum.ActuatorRelativeTo.World
+			vf.Attachment0 = ppState.att
+			vf.Force = Vector3.zero
+			vf.Parent = hrp
+			ppState.force = vf
+		end
+
+		return ppState.force
+	end
+
+	local function stopPullPush()
+		ppState.mode = "None"
+		ppState.targetUserId = 0
+		clearForceObjects()
+	end
+
+	local function startPull(targetPlr, speed)
+		if not localCanBeMovedByPP() then return end
+		if not targetPlr then return end
+		ppState.mode = "Pull"
+		ppState.targetUserId = targetPlr.UserId
+		ppState.pullSpeed = clampInt(speed, 1, 50, 20)
+
+		if ppState.conn then
+			pcall(function() ppState.conn:Disconnect() end)
+			ppState.conn = nil
+		end
+
+		ppState.conn = RunService.RenderStepped:Connect(function()
+			if ppState.mode ~= "Pull" then return end
+
+			local myChar = LocalPlayer.Character
+			local theirChar = targetPlr.Character
+			if not myChar or not theirChar then
+				stopPullPush()
+				return
+			end
+
+			local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+			local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+			if not myHRP or not theirHRP then
+				stopPullPush()
+				return
+			end
+
+			local vf = ensureForceObjects(myHRP)
+			if not vf then
+				stopPullPush()
+				return
+			end
+
+			local delta = (theirHRP.Position - myHRP.Position)
+			local dist = delta.Magnitude
+			if dist < 2 then
+				vf.Force = Vector3.zero
+				return
+			end
+
+			local dir = delta.Unit
+			local mass = myHRP.AssemblyMass
+			if mass <= 0 then mass = 1 end
+
+			-- Map 1-50 to a sensible acceleration
+			local accel = ppState.pullSpeed * 35
+			local maxAccel = 2200
+			if accel > maxAccel then accel = maxAccel end
+
+			vf.Force = dir * (accel * mass)
+		end)
+	end
+
+	local function startPushHold(targetPlr, power)
+		if not localCanBeMovedByPP() then return end
+		if not targetPlr then return end
+		ppState.mode = "PushHold"
+		ppState.targetUserId = targetPlr.UserId
+		ppState.pushPower = clampInt(power, 1, 100, 60)
+
+		if ppState.conn then
+			pcall(function() ppState.conn:Disconnect() end)
+			ppState.conn = nil
+		end
+
+		ppState.conn = RunService.RenderStepped:Connect(function()
+			if ppState.mode ~= "PushHold" then return end
+
+			local myChar = LocalPlayer.Character
+			local theirChar = targetPlr.Character
+			if not myChar or not theirChar then
+				stopPullPush()
+				return
+			end
+
+			local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+			local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+			if not myHRP or not theirHRP then
+				stopPullPush()
+				return
+			end
+
+			local vf = ensureForceObjects(myHRP)
+			if not vf then
+				stopPullPush()
+				return
+			end
+
+			local delta = (myHRP.Position - theirHRP.Position)
+			local dist = delta.Magnitude
+			if dist < 2 then
+				vf.Force = Vector3.zero
+				return
+			end
+
+			local dir = delta.Unit
+			local mass = myHRP.AssemblyMass
+			if mass <= 0 then mass = 1 end
+
+			-- Map 1-100 to acceleration
+			local accel = ppState.pushPower * 25
+			local maxAccel = 3000
+			if accel > maxAccel then accel = maxAccel end
+
+			vf.Force = dir * (accel * mass)
+		end)
+	end
+
+	local function doPushBurst(targetPlr, power)
+		if not localCanBeMovedByPP() then return end
+		if not targetPlr then return end
+
+		local now = os.clock()
+		if (now - (ppState.lastBurstAt or 0)) < 0.15 then return end
+		ppState.lastBurstAt = now
+
+		local myChar = LocalPlayer.Character
+		local theirChar = targetPlr.Character
+		if not myChar or not theirChar then return end
+
+		local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+		local theirHRP = theirChar:FindFirstChild("HumanoidRootPart")
+		if not myHRP or not theirHRP then return end
+
+		local p = clampInt(power, 1, 100, 60)
+
+		local delta = (myHRP.Position - theirHRP.Position)
+		if delta.Magnitude < 0.1 then
+			delta = Vector3.new(0, 0, 1)
+		end
+		local dir = delta.Unit
+
+		local mass = myHRP.AssemblyMass
+		if mass <= 0 then mass = 1 end
+
+		-- Impulse scale tuned to feel like a "quick shove"
+		local impulseMag = p * 65 * mass
+		pcall(function()
+			myHRP:ApplyImpulse(dir * impulseMag)
+		end)
+	end
+
+	-- Reapply if you respawn while a hold mode is active
+	LocalPlayer.CharacterAdded:Connect(function()
+		task.delay(0.25, function()
+			if not localCanBeMovedByPP() then
+				stopPullPush()
+				return
+			end
+
+			local target = Players:GetPlayerByUserId(ppState.targetUserId or 0)
+			if not target then
+				stopPullPush()
+				return
+			end
+
+			if ppState.mode == "Pull" then
+				startPull(target, ppState.pullSpeed)
+			elseif ppState.mode == "PushHold" then
+				startPushHold(target, ppState.pushPower)
+			end
+		end)
+	end)
+
+	----------------------------------------------------------------
+	-- COMMAND PARSING (WRAP EXISTING applyCommandFrom)
+	----------------------------------------------------------------
+	local _OLD_applyCommandFrom = applyCommandFrom
+	applyCommandFrom = function(uid, text)
+		if _OLD_applyCommandFrom and _OLD_applyCommandFrom(uid, text) then
+			return true
+		end
+
+		if type(text) ~= "string" then return false end
+		local sender = Players:GetPlayerByUserId(uid)
+		if not sender then return false end
+		if not (isOwner(sender) or isCoOwner(sender)) then
+			return false
+		end
+
+		-- Stop all
+		if text == PP_CMD_STOP or text == PP_CMD_PUSHSTOP then
+			stopPullPush()
+			return true
+		end
+
+		-- Pull
+		if text:sub(1, #PP_CMD_PULL_PREFIX) == PP_CMD_PULL_PREFIX then
+			local payload = text:sub(#PP_CMD_PULL_PREFIX + 1)
+			local parts = splitByColon(payload)
+
+			local targetType = parts[1]
+			local targetUserId = nil
+			local speed = nil
+
+			if targetType == PP_TARGET_USERID then
+				targetUserId = parts[2]
+				speed = parts[3]
+			else
+				speed = parts[2]
+			end
+
+			local speedClamped = clampInt(speed, 1, 50, 20)
+			local targetPlr = resolveTargetPlayer(targetType, targetUserId)
+			if targetPlr then
+				startPull(targetPlr, speedClamped)
+			end
+			return true
+		end
+
+		-- Push burst
+		if text:sub(1, #PP_CMD_PUSHBURST_PREFIX) == PP_CMD_PUSHBURST_PREFIX then
+			local payload = text:sub(#PP_CMD_PUSHBURST_PREFIX + 1)
+			local parts = splitByColon(payload)
+
+			local targetType = parts[1]
+			local targetUserId = nil
+			local power = nil
+
+			if targetType == PP_TARGET_USERID then
+				targetUserId = parts[2]
+				power = parts[3]
+			else
+				power = parts[2]
+			end
+
+			local powerClamped = clampInt(power, 1, 100, 60)
+			local targetPlr = resolveTargetPlayer(targetType, targetUserId)
+			if targetPlr then
+				doPushBurst(targetPlr, powerClamped)
+			end
+			return true
+		end
+
+		-- Push hold
+		if text:sub(1, #PP_CMD_PUSHHOLD_PREFIX) == PP_CMD_PUSHHOLD_PREFIX then
+			local payload = text:sub(#PP_CMD_PUSHHOLD_PREFIX + 1)
+			local parts = splitByColon(payload)
+
+			local targetType = parts[1]
+			local targetUserId = nil
+			local power = nil
+
+			if targetType == PP_TARGET_USERID then
+				targetUserId = parts[2]
+				power = parts[3]
+			else
+				power = parts[2]
+			end
+
+			local powerClamped = clampInt(power, 1, 100, 60)
+			local targetPlr = resolveTargetPlayer(targetType, targetUserId)
+			if targetPlr then
+				startPushHold(targetPlr, powerClamped)
+			end
+			return true
+		end
+
+		return false
+	end
+
+	----------------------------------------------------------------
+	-- OWNER COOWNER UI PANEL (BUTTONS SEND CHAT COMMANDS)
+	-- No sliders: text inputs only
+	----------------------------------------------------------------
+	local ppPanel
+	local pullSpeedBox
+	local pushPowerBox
+
+	local function sanitizeBox(box, minV, maxV, fallback)
+		if not box then return fallback end
+		local n = clampInt(box.Text, minV, maxV, fallback)
+		box.Text = tostring(n)
+		return n
+	end
+
+	local function ensurePullPushPanel()
+		ensureGui()
+
+		local show = isOwner(LocalPlayer) or isCoOwner(LocalPlayer)
+		if not show then
+			if ppPanel and ppPanel.Parent then
+				ppPanel:Destroy()
+			end
+			ppPanel = nil
+			return
+		end
+
+		if ppPanel and ppPanel.Parent then return end
+
+		ppPanel = Instance.new("Frame")
+		ppPanel.Name = "SOS_PullPushPanel"
+		ppPanel.AnchorPoint = Vector2.new(0, 1)
+		ppPanel.Position = UDim2.new(0, 10, 1, -118)
+		ppPanel.Size = UDim2.new(0, 220, 0, 150)
+		ppPanel.BorderSizePixel = 0
+		ppPanel.Parent = gui
+		makeCorner(ppPanel, 14)
+		makeGlass(ppPanel)
+		makeStroke(ppPanel, 2, Color3.fromRGB(200, 40, 40), 0.1)
+
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft = UDim.new(0, 10)
+		pad.PaddingRight = UDim.new(0, 10)
+		pad.PaddingTop = UDim.new(0, 10)
+		pad.PaddingBottom = UDim.new(0, 10)
+		pad.Parent = ppPanel
+
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Vertical
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 8)
+		layout.Parent = ppPanel
+
+		local title = Instance.new("TextLabel")
+		title.BackgroundTransparency = 1
+		title.Size = UDim2.new(1, 0, 0, 18)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 13
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.TextColor3 = Color3.fromRGB(245, 245, 245)
+		title.Text = "Pull and Push"
+		title.Parent = ppPanel
+
+		local rowInputs = Instance.new("Frame")
+		rowInputs.BackgroundTransparency = 1
+		rowInputs.Size = UDim2.new(1, 0, 0, 30)
+		rowInputs.Parent = ppPanel
+
+		local rowLayout = Instance.new("UIListLayout")
+		rowLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowLayout.Padding = UDim.new(0, 8)
+		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		rowLayout.Parent = rowInputs
+
+		local function makeLabelBox(labelText, defaultText)
+			local holder = Instance.new("Frame")
+			holder.BackgroundTransparency = 1
+			holder.Size = UDim2.new(0, 101, 0, 30)
+			holder.Parent = rowInputs
+
+			local lbl = Instance.new("TextLabel")
+			lbl.BackgroundTransparency = 1
+			lbl.Size = UDim2.new(1, 0, 0, 12)
+			lbl.Position = UDim2.new(0, 0, 0, -2)
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 11
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+			lbl.Text = labelText
+			lbl.Parent = holder
+
+			local box = Instance.new("TextBox")
+			box.Size = UDim2.new(1, 0, 0, 20)
+			box.Position = UDim2.new(0, 0, 0, 12)
+			box.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+			box.BackgroundTransparency = 0.18
+			box.BorderSizePixel = 0
+			box.ClearTextOnFocus = false
+			box.Font = Enum.Font.Gotham
+			box.TextSize = 12
+			box.TextColor3 = Color3.fromRGB(255, 255, 255)
+			box.TextXAlignment = Enum.TextXAlignment.Left
+			box.Text = defaultText
+			box.Parent = holder
+			makeCorner(box, 10)
+			makeStroke(box, 1, Color3.fromRGB(200, 40, 40), 0.35)
+
+			return box
+		end
+
+		pullSpeedBox = makeLabelBox("Pull Speed 1-50", "20")
+		pushPowerBox = makeLabelBox("Push Power 1-100", "60")
+
+		pullSpeedBox.FocusLost:Connect(function()
+			sanitizeBox(pullSpeedBox, 1, 50, 20)
+		end)
+		pushPowerBox.FocusLost:Connect(function()
+			sanitizeBox(pushPowerBox, 1, 100, 60)
+		end)
+
+		local rowPull = Instance.new("Frame")
+		rowPull.BackgroundTransparency = 1
+		rowPull.Size = UDim2.new(1, 0, 0, 32)
+		rowPull.Parent = ppPanel
+
+		local rowPullLayout = Instance.new("UIListLayout")
+		rowPullLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowPullLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowPullLayout.Padding = UDim.new(0, 8)
+		rowPullLayout.Parent = rowPull
+
+		local pullOwnerBtn = makeButton(rowPull, "Pull Owner")
+		pullOwnerBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local pullCoBtn = makeButton(rowPull, "Pull CoOwner")
+		pullCoBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local rowPush = Instance.new("Frame")
+		rowPush.BackgroundTransparency = 1
+		rowPush.Size = UDim2.new(1, 0, 0, 32)
+		rowPush.Parent = ppPanel
+
+		local rowPushLayout = Instance.new("UIListLayout")
+		rowPushLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowPushLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowPushLayout.Padding = UDim.new(0, 8)
+		rowPushLayout.Parent = rowPush
+
+		local pushBurstOwnerBtn = makeButton(rowPush, "Burst Owner")
+		pushBurstOwnerBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local pushBurstCoBtn = makeButton(rowPush, "Burst CoOwner")
+		pushBurstCoBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local rowHold = Instance.new("Frame")
+		rowHold.BackgroundTransparency = 1
+		rowHold.Size = UDim2.new(1, 0, 0, 32)
+		rowHold.Parent = ppPanel
+
+		local rowHoldLayout = Instance.new("UIListLayout")
+		rowHoldLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowHoldLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowHoldLayout.Padding = UDim.new(0, 8)
+		rowHoldLayout.Parent = rowHold
+
+		local pushHoldOwnerBtn = makeButton(rowHold, "Hold Owner")
+		pushHoldOwnerBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local stopBtn = makeButton(rowHold, "Stop")
+		stopBtn.Size = UDim2.new(0, 101, 0, 32)
+
+		local function getSpeed()
+			return sanitizeBox(pullSpeedBox, 1, 50, 20)
+		end
+
+		local function getPower()
+			return sanitizeBox(pushPowerBox, 1, 100, 60)
+		end
+
+		pullOwnerBtn.MouseButton1Click:Connect(function()
+			local spd = getSpeed()
+			trySendChat("SOS_PP_PULL:OWNER:" .. tostring(spd))
+		end)
+
+		pullCoBtn.MouseButton1Click:Connect(function()
+			local spd = getSpeed()
+			trySendChat("SOS_PP_PULL:COOWNER:" .. tostring(spd))
+		end)
+
+		pushBurstOwnerBtn.MouseButton1Click:Connect(function()
+			local pow = getPower()
+			trySendChat("SOS_PP_PUSHBURST:OWNER:" .. tostring(pow))
+		end)
+
+		pushBurstCoBtn.MouseButton1Click:Connect(function()
+			local pow = getPower()
+			trySendChat("SOS_PP_PUSHBURST:COOWNER:" .. tostring(pow))
+		end)
+
+		pushHoldOwnerBtn.MouseButton1Click:Connect(function()
+			local pow = getPower()
+			trySendChat("SOS_PP_PUSHHOLD:OWNER:" .. tostring(pow))
+		end)
+
+		stopBtn.MouseButton1Click:Connect(function()
+			trySendChat("SOS_PP_STOP")
+		end)
+	end
+
+	task.delay(INIT_DELAY + 0.35, function()
+		ensurePullPushPanel()
+	end)
+
+	-- Keep panel correct if roles change or rejoin weirdness
+	Players.PlayerAdded:Connect(function()
+		task.delay(0.35, function()
+			ensurePullPushPanel()
+		end)
+	end)
+	Players.PlayerRemoving:Connect(function()
+		task.delay(0.35, function()
+			ensurePullPushPanel()
+		end)
+	end)
+end
