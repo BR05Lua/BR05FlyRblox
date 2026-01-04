@@ -1450,6 +1450,66 @@ local function destroyTagGui(char, name)
 	local old = char:FindFirstChild(name)
 	if old then old:Destroy() end
 end
+--------------------------------------------------------------------
+-- AU FLAG TAG (CLIENT SIDE)
+--------------------------------------------------------------------
+local AU_FLAG_USER_ID = 105995794
+local AU_TAG_NAME = "SOS_AUFlagTag"
+
+local function removeAuFlagTag(char)
+	if not char then return end
+	local old = char:FindFirstChild(AU_TAG_NAME)
+	if old then
+		old:Destroy()
+	end
+end
+
+local function applyAuFlagTag(plr)
+	if not plr then return end
+	local char = plr.Character
+	if not char then return end
+
+	if plr.UserId ~= AU_FLAG_USER_ID then
+		removeAuFlagTag(char)
+		return
+	end
+
+	removeAuFlagTag(char)
+
+	local head = char:FindFirstChild("Head")
+	if not head then
+		head = char:WaitForChild("Head", 5)
+	end
+	if not head or not head:IsA("BasePart") then return end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = AU_TAG_NAME
+	bb.Adornee = head
+	bb.AlwaysOnTop = true
+	bb.Size = UDim2.new(0, 120, 0, 34)
+	bb.StudsOffset = Vector3.new(0, 4.2, 0)
+	bb.Parent = char
+
+	local bg = Instance.new("Frame")
+	bg.BackgroundTransparency = 0.25
+	bg.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+	bg.BorderSizePixel = 0
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.Parent = bb
+
+	makeCorner(bg, 10)
+	makeStroke(bg, 1, Color3.fromRGB(0, 0, 0), 0.35)
+
+	local txt = Instance.new("TextLabel")
+	txt.BackgroundTransparency = 1
+	txt.Size = UDim2.new(1, 0, 1, 0)
+	txt.Font = Enum.Font.GothamBold
+	txt.TextSize = 22
+	txt.TextColor3 = Color3.fromRGB(245, 245, 245)
+	txt.TextStrokeTransparency = 0.6
+	txt.Text = "🇦🇺"
+	txt.Parent = bg
+end
 
 --------------------------------------------------------------------
 -- ROLE RESOLUTION
@@ -2599,7 +2659,9 @@ local function refreshAllTagsForPlayer(plr)
 	if not plr or not plr.Character then return end
 	createSosRoleTag(plr)
 	createAkOrbTag(plr)
+	applyAuFlagTag(plr)
 end
+
 
 _G.__SOS_REFRESH_TAGS_FOR_PLAYER = refreshAllTagsForPlayer
 
@@ -3429,76 +3491,4 @@ do
 		end)
 	end)
 end
-local Players = game:GetService("Players")
 
-local TARGET_AU_USER_ID = 105995794
-
-local function addAUFlagTag(character)
-	if not character then return end
-
-	local head = character:FindFirstChild("Head")
-	if not head then
-		head = character:WaitForChild("Head", 10)
-	end
-	if not head then return end
-
-	local existing = head:FindFirstChild("AUFlagTagGui")
-	if existing then
-		existing:Destroy()
-	end
-
-	local bill = Instance.new("BillboardGui")
-	bill.Name = "AUFlagTagGui"
-	bill.Adornee = head
-	bill.AlwaysOnTop = true
-	bill.Size = UDim2.new(0, 140, 0, 40)
-	bill.StudsOffset = Vector3.new(0, 2.4, 0)
-	bill.Parent = head
-
-	local bg = Instance.new("Frame")
-	bg.BackgroundTransparency = 0.25
-	bg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	bg.Size = UDim2.new(1, 0, 1, 0)
-	bg.Parent = bill
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = bg
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 1
-	stroke.Transparency = 0.35
-	stroke.Parent = bg
-
-	local txt = Instance.new("TextLabel")
-	txt.BackgroundTransparency = 1
-	txt.Size = UDim2.new(1, 0, 1, 0)
-	txt.Font = Enum.Font.GothamBold
-	txt.TextSize = 22
-	txt.TextColor3 = Color3.fromRGB(245, 245, 245)
-	txt.TextStrokeTransparency = 0.6
-	txt.Text = "🇦🇺"
-	txt.Parent = bg
-end
-
-local function onPlayer(player)
-	if player.UserId ~= TARGET_AU_USER_ID then
-		return
-	end
-
-	local function onChar(character)
-		addAUFlagTag(character)
-	end
-
-	if player.Character then
-		onChar(player.Character)
-	end
-
-	player.CharacterAdded:Connect(onChar)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-	onPlayer(p)
-end
-
-Players.PlayerAdded:Connect(onPlayer)
