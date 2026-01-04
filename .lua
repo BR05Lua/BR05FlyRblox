@@ -49,6 +49,18 @@ local steps = {
         end,
         delayAfter = 0.5,
     },
+        {
+        name = "Inf Yield",
+        run = function()
+            if not canRunStep("Inf Yield") then
+                return
+            end
+            -- Inf Yield code here
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        end,
+    },
+}
+
     {
         name = "Tag System",
         run = function()
