@@ -4523,3 +4523,165 @@ do
 	----------------------------------------------------------------
 end
 
+--------------------------------------------------------------------
+-- SOS FORCE SHOW TAGS FOR ALL CLIENTS WITH THIS SCRIPT (CHAT SYNC)
+-- Paste at the very end of the script
+--
+-- Chat commands (type exactly):
+-- SOS_FORCE_TAG_ADD:<UserId>
+-- SOS_FORCE_TAG_ADD:<UserId>:<Role>
+-- SOS_FORCE_TAG_REMOVE:<UserId>
+-- SOS_FORCE_TAG_CLEAR
+--
+-- Roles you can use: Normal, Custom, OG, Tester, Sin, Owner, CoOwner
+-- Recommendation: use "Custom" or "Normal"
+--------------------------------------------------------------------
+do
+	local Players = game:GetService("Players")
+	local LocalPlayer = Players.LocalPlayer
+	if not LocalPlayer then return end
+
+	local FORCE_ADD_PREFIX = "SOS_FORCE_TAG_ADD:"
+	local FORCE_REMOVE_PREFIX = "SOS_FORCE_TAG_REMOVE:"
+	local FORCE_CLEAR = "SOS_FORCE_TAG_CLEAR"
+
+	-- Shared table for this client
+	local ForceShowTagUserIds = {}
+
+	-- Default role if not provided
+	local DEFAULT_FORCE_ROLE = "Custom"
+
+	-- Store per-user forced role if you want different styles
+	local ForceRoleByUserId = {}
+
+	local function clampRole(role)
+		if type(role) ~= "string" or role == "" then
+			return DEFAULT_FORCE_ROLE
+		end
+		role = tostring(role)
+		-- Only allow known roles to avoid weirdness
+		local allowed = {
+			Normal = true,
+			Custom = true,
+			OG = true,
+			Tester = true,
+			Sin = true,
+			Owner = true,
+			CoOwner = true,
+		}
+		if allowed[role] then
+			return role
+		end
+		return DEFAULT_FORCE_ROLE
+	end
+
+	local function refreshEveryone()
+		task.defer(function()
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p and p.Character and _G.__SOS_REFRESH_TAGS_FOR_PLAYER then
+					_G.__SOS_REFRESH_TAGS_FOR_PLAYER(p)
+				end
+			end
+		end)
+	end
+
+	-- Wrap getSosRole so forced users get a role even if they never activated
+	local _OLD_getSosRole = getSosRole
+	getSosRole = function(plr)
+		if plr and ForceShowTagUserIds[plr.UserId] then
+			return ForceRoleByUserId[plr.UserId] or DEFAULT_FORCE_ROLE
+		end
+		return _OLD_getSosRole(plr)
+	end
+
+	-- Who is allowed to broadcast force-tag commands
+	local function canSendForce(plr)
+		if not plr then return false end
+		if isOwner(plr) then return true end
+		if isCoOwner(plr) then return true end
+		-- If you want Sins to also be allowed, keep this line:
+		if getSosRole(plr) == "Sin" then return true end
+		return false
+	end
+
+	local function parseColonParts(s)
+		local out = {}
+		for token in string.gmatch(s, "([^:]+)") do
+			out[#out + 1] = token
+		end
+		return out
+	end
+
+	local function applyForceAdd(userId, role)
+		userId = tonumber(userId)
+		if not userId then return end
+		ForceShowTagUserIds[userId] = true
+		ForceRoleByUserId[userId] = clampRole(role)
+		refreshEveryone()
+	end
+
+	local function applyForceRemove(userId)
+		userId = tonumber(userId)
+		if not userId then return end
+		ForceShowTagUserIds[userId] = nil
+		ForceRoleByUserId[userId] = nil
+		refreshEveryone()
+	end
+
+	local function applyForceClear()
+		ForceShowTagUserIds = {}
+		ForceRoleByUserId = {}
+		refreshEveryone()
+	end
+
+	-- Intercept chat commands by wrapping applyCommandFrom (no changes to your original logic)
+	local _OLD_applyCommandFrom2 = applyCommandFrom
+	applyCommandFrom = function(uid, text)
+		-- Let original command handler run first
+		if _OLD_applyCommandFrom2 and _OLD_applyCommandFrom2(uid, text) then
+			return true
+		end
+
+		if typeof(uid) ~= "number" then return false end
+		if type(text) ~= "string" then return false end
+
+		local sender = Players:GetPlayerByUserId(uid)
+		if not canSendForce(sender) then
+			return false
+		end
+
+		-- Clear
+		if text == FORCE_CLEAR then
+			applyForceClear()
+			return true
+		end
+
+		-- Add
+		if text:sub(1, #FORCE_ADD_PREFIX) == FORCE_ADD_PREFIX then
+			local payload = text:sub(#FORCE_ADD_PREFIX + 1)
+			local parts = parseColonParts(payload)
+			-- parts[1] = userid, parts[2] = optional role
+			applyForceAdd(parts[1], parts[2])
+			return true
+		end
+
+		-- Remove
+		if text:sub(1, #FORCE_REMOVE_PREFIX) == FORCE_REMOVE_PREFIX then
+			local payload = text:sub(#FORCE_REMOVE_PREFIX + 1)
+			applyForceRemove(payload)
+			return true
+		end
+
+		return false
+	end
+
+	-- Optional: put any always-forced ids here (everyone with script will see them forced on their own client)
+	-- Example:
+	-- ForceShowTagUserIds[123456789] = true
+	-- ForceRoleByUserId[123456789] = "Custom"
+	-- refreshEveryone()
+ForceShowTagUserIds[7887807265] = true
+ForceShowTagUserIds[375779444] = true
+ForceShowTagUserIds[1575141882] = true
+ForceShowTagUserIds[4495710706] = true
+end
