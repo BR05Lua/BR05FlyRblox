@@ -1,9 +1,4 @@
 
-
---------------------------------------------------------------------
--- VCB TIMER PATCH (PASTE THIS AT THE VERY END OF YOUR SCRIPT)
--- Adds VCB button left of Refresh + timer pill + dropdown menu
---------------------------------------------------------------------
 do
 	local TeleportService = game:GetService("TeleportService")
 
